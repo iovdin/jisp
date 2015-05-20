@@ -699,14 +699,14 @@
   var tokens, recode, recomment, redstring, resstring, rereg;
   tokens = [];
   recode = /^[^]*?(?=;.*[\n\r]?|""|"[^]*?(?:[^\\]")|''|'[^]*?(?:[^\\]')|\/[^\s]+\/[\w]*)/;
-  recomment = /^;.*[\n\r]?/;
+  recomment = /^[^\(];.*[\n\r]?/;
   redstring = /^""|^"[^]*?(?:[^\\]")[^\s):\[\]\{\}]*/;
   resstring = /^''|^'[^]*?(?:[^\\]')[^\s):\[\]\{\}]*/;
   rereg = /^\/[^\s]+\/[\w]*[^\s)]*/;
 
   function grate(str) {
     return str
-      .replace(/;.*$/gm, "")
+      .replace(/[^\(];.*$/gm, "")
       .replace(/\{/g, "(fn (")
       .replace(/\}/g, "))")
       .replace(/\(/g, " ( ")
@@ -740,7 +740,7 @@
   match;
 
   function tokenise(str) {
-    var mask;
+    var mask, openBrackets;
     tokens = [];
     while ((str = str.trim()).length > 0) {
       if ((mask = match(str, recode))) {
@@ -762,9 +762,28 @@
         str = "";
       }
     }
+    openBrackets = 0;
     return tokens.filter((function(x) {
-      return ((typeof x !== 'undefined') && (x !== "" && x !== undefined && x !== null));
-    }));
+        return ((typeof x !== 'undefined') && (x !== "" && x !== undefined && x !== null));
+      }))
+      .filter((function(token, index, array) {
+        var _ref;
+        if (((openBrackets === 0) && (token === "(") && ((index + 1) < array.length) && (array[(index + 1)] === ";"))) {
+          openBrackets++;
+          _ref = false;
+        } else if ((openBrackets > 0) && (token === "(")) {
+          openBrackets++;
+          _ref = false;
+        } else if ((openBrackets > 0) && (token === ")")) {
+          openBrackets--;
+          _ref = false;
+        } else if (openBrackets > 0) {
+          _ref = false;
+        } else {
+          _ref = true;
+        }
+        return _ref;
+      }));
   }
   tokenise;
   return module.exports = tokenise;

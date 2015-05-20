@@ -7,7 +7,7 @@
 (= tokens    `()  ;#`
    recode    /^[^]*?(?=;.*[\n\r]?|""|"[^]*?(?:[^\\]")|''|'[^]*?(?:[^\\]')|\/[^\s]+\/[\w]*)/
              ;# ^ matches until first comment, '-string, "-string, or regex
-   recomment /^;.*[\n\r]?/                     ; first comment
+   recomment /^[^\(];.*[\n\r]?/                     ; first comment
    redstring /^""|^"[^]*?(?:[^\\]")[^\s):\[\]\{\}]*/   ; first " string + data until delimiter
    resstring /^''|^'[^]*?(?:[^\\]')[^\s):\[\]\{\}]*/   ; first ' string + data until delimiter
    rereg     /^\/[^\s]+\/[\w]*[^\s)]*/)        ; first regex + data until delimiter
@@ -16,7 +16,7 @@
 
 (def grate str
      (do str
-         (.replace /;.*$/gm         "")       ; drop comments if any
+         (.replace /[^\(];.*$/gm         "")       ; drop comments if any
          (.replace /\{/g            "(fn (")  ; desugar lambdas
          (.replace /\}/g            "))")     ; desugar lambdas
          (.replace /\(/g            " ( ")
@@ -48,24 +48,48 @@
 
 (def tokenise str
      (do (= tokens `())
-         (while (> (= str (str.trim)).length 0)
-                (if (= mask          (match str recode))
-                    (do (tokens.push …(grate mask))
-                        (= str       (str.replace recode "")))
-                    (elif (= mask    (match str recomment))
-                          (= str     (str.replace recomment "")))
-                    (elif (= mask    (match str redstring))
-                          (do (tokens.push (concatNewLines mask))
-                              (= str (str.replace redstring ""))))
-                    (elif (= mask    (match str resstring))
-                          (do (tokens.push (concatNewLines mask))
-                              (= str (str.replace resstring ""))))
-                    (elif (= mask    (match str rereg))
-                          (do (tokens.push mask)
-                              (= str (str.replace rereg ""))))
-                    (do (tokens.push …(grate str))
-                        (= str ""))))
-         (tokens.filter (fn x (and (? x) (isnt x "" undefined null))))))
+       (while (> (= str (str.trim)).length 0)
+              (if (= mask          (match str recode))
+                (do (tokens.push …(grate mask))
+                  (= str       (str.replace recode "")))
+                (elif (= mask    (match str recomment))
+                      (= str     (str.replace recomment "")))
+                (elif (= mask    (match str redstring))
+                      (do (tokens.push (concatNewLines mask))
+                        (= str (str.replace redstring ""))))
+                (elif (= mask    (match str resstring))
+                      (do (tokens.push (concatNewLines mask))
+                        (= str (str.replace resstring ""))))
+                (elif (= mask    (match str rereg))
+                      (do (tokens.push mask)
+                        (= str (str.replace rereg ""))))
+                (do (tokens.push …(grate str))
+                  (= str ""))))
+
+       (= openBrackets 0)
+       (tokens.filter (fn x (and (? x) (isnt x "" undefined null))))
+       (.filter (fn token index array
+                    (if (and 
+                          (is openBrackets 0)
+                          (is token "(") 
+                          (< (+ index 1) array.length) 
+                          (is (get array (+ index 1)) ";"))
+                      (do openBrackets++ false)
+                      (elif (and 
+                              (> openBrackets 0)
+                              (is token "("))
+                            (do openBrackets++ false))
+                      (elif (and 
+                              (> openBrackets 0)
+                              (is token ")"))
+                            (do openBrackets-- false))
+                      (elif (> openBrackets 0)
+                            false)
+                      true
+                      ))
+
+
+                )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Export ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
