@@ -696,17 +696,15 @@
     })();require['./tokenise'] = (function() {
       var exports = {}, module = {exports: exports};
       (function() {
-  var tokens, recode, recomment, redstring, resstring, rereg;
+  var tokens, recode, redstring, resstring, rereg;
   tokens = [];
-  recode = /^[^]*?(?=;.*[\n\r]?|""|"[^]*?(?:[^\\]")|''|'[^]*?(?:[^\\]')|\/[^\s]+\/[\w]*)/;
-  recomment = /^[^\(];.*[\n\r]?/;
+  recode = /^[^]*?(?=""|"[^]*?(?:[^\\]")|''|'[^]*?(?:[^\\]')|\/[^\s]+\/[\w]*)/;
   redstring = /^""|^"[^]*?(?:[^\\]")[^\s):\[\]\{\}]*/;
   resstring = /^''|^'[^]*?(?:[^\\]')[^\s):\[\]\{\}]*/;
   rereg = /^\/[^\s]+\/[\w]*[^\s)]*/;
 
   function grate(str) {
     return str
-      .replace(/[^\(];.*$/gm, "")
       .replace(/\{/g, "(fn (")
       .replace(/\}/g, "))")
       .replace(/\(/g, " ( ")
@@ -742,12 +740,13 @@
   function tokenise(str) {
     var mask, openBrackets;
     tokens = [];
+    str = str
+      .replace(/^;.*$/gm, "")
+      .replace(/\s;.*$/gm, "");
     while ((str = str.trim()).length > 0) {
       if ((mask = match(str, recode))) {
         tokens.push.apply(tokens, [].concat(grate(mask)));
         str = str.replace(recode, "");
-      } else if (mask = match(str, recomment)) {
-        str = str.replace(recomment, "");
       } else if (mask = match(str, redstring)) {
         tokens.push(concatNewLines(mask));
         str = str.replace(redstring, "");
