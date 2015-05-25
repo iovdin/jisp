@@ -767,7 +767,7 @@
       }))
       .filter((function(token, index, array) {
         var _ref;
-        if (((openBrackets === 0) && (token === "(") && ((index + 1) < array.length) && (array[(index + 1)] === ";"))) {
+        if (((openBrackets === 0) && (token === "(") && ((index + 1) < array.length) && (array[(index + 1)][0] === ";"))) {
           openBrackets++;
           _ref = false;
         } else if ((openBrackets > 0) && (token === "(")) {

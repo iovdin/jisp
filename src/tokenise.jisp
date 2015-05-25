@@ -48,7 +48,7 @@
      (do (= tokens `())
        (= str (do str
                 (.replace /^;.*$/gm "")
-                (.replace /\s;.*$/gm  "")))
+                (.replace /\s;.*$/gm  ""))) ; this is a dirty hack FIXME:
        (while (> (= str (str.trim)).length 0)
               (if (= mask          (match str recode))
                 (do (tokens.push …(grate mask))
@@ -72,7 +72,7 @@
                           (is openBrackets 0)
                           (is token "(") 
                           (< (+ index 1) array.length) 
-                          (is (get array (+ index 1)) ";"))
+                          (is (get array (+ index 1))[0] ";"))
                       (do openBrackets++ false)
                       (elif (and 
                               (> openBrackets 0)
