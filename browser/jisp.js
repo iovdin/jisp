@@ -1790,6 +1790,29 @@
     }
     return Array(buffer, scope);
   });
+  specials.source = (function(form, scope) {
+    return Array(JSON.stringify((function() {
+      var recur;
+      recur = (function() {
+        var item, _i, _res, _ref, _ref0;
+        if (isList(arguments[0])) {
+          _res = [];
+          _ref = arguments[0];
+          for (_i = 0; _i < _ref.length; ++_i) {
+            item = _ref[_i];
+            if (typeof recur(item) !== 'undefined') _res.push(recur(item));
+          }
+          _ref0 = ("(" + _res.join(" ") + ")");
+        } else if (arguments[0]) {
+          _ref0 = arguments[0];
+        } else {
+          _ref0 = "";
+        }
+        return _ref0;
+      });
+      return recur(form[1]);
+    })()), scope);
+  });
   specials.quote = (function(form, scope, opts, nested) {
     var buffer, formName, nestedLocal, arr, res, exp, i, item, key, newform, _i, _ref, _ref0, _i0, _ref1, _i1, _ref2, _i2, _ref3, _i3, _ref4, _i4, _ref5, _ref6, _i5, _ref7, _i6, _ref8, _ref9, _i7, _ref10, _ref11, _i8;
     if ((typeof opts === 'undefined')) opts = {};
