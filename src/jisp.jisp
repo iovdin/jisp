@@ -415,6 +415,27 @@
           (macCompileAdd exp)))))
     (if isTopLevel (macDeclareOrHoist))))))
 
+(mac new-scope ...body
+     `((fn (do ,...body))))
+
+(mac do-recur ...params body
+     `(new-scope
+        (= recur (fn ,body))
+        (recur ,...params)))
+
+(= specials.source
+   (fn form scope
+       (Array
+         (JSON.stringify
+           (do-recur form[1]
+                     (if (isList #0)
+                       (+ "(" ((for item #0
+                                    (recur item)).join " ") ")")
+                       (elif #0 #0)
+                       ""
+                       )))
+         scope)))
+
 (= specials.quote (macCompileSpecial (argsMin: 1 argsMax: 1
   code: (do
     (= form (car form))
