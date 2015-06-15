@@ -136,6 +136,21 @@
     elements = _res;
     return ((elements.length > 1) ? [].concat(["or"]).concat(elements) : elements[0]);
   };
+  var maceg = function() {
+    var _i;
+    var values = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
+    return [];
+  };
+  var vcsCheckout = function() {
+    var _i;
+    var names = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
+    return [].concat(["do"]).concat(names);
+  };
+  var vcsCommit = function() {
+    var _i;
+    var rest = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
+    return [].concat(["do"]).concat(((typeof rest[0] === "string") ? rest.slice(1) : rest));
+  };
   var utils;
   utils = require("./utils");
   exports[":"] = macHash;
@@ -202,5 +217,8 @@
   exports["?!"] = macNotExist;
   exports.isa = macIsA;
   exports.isnta = macIsNa;
-  return exports.any = macAny;
+  exports.any = macAny;
+  exports["e.g."] = maceg;
+  exports["vcs-checkout"] = vcsCheckout;
+  return exports["vcs-commit"] = vcsCommit;
 })['call'](this);
