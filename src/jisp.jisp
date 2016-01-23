@@ -1,5 +1,5 @@
 ; Version
-(= exports.version "0.3.3")
+(= exports.version "0.3.4")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Dependencies ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1075,7 +1075,7 @@
                 isTopLevel: yes   ; for functions wrapping `do`
                 pretty:     yes)  ; enables beautifier
       opts     (utils.merge defaults opts))
-   (= parsed (parse (lex (tokenise src))))
+   (= parsed (if (Array.isArray src) src (parse (lex (tokenise src)))))
    (parsed.unshift "do")  ; always put code into an implicit `do`
    (if opts.wrap
        (= parsed `(("get" ("fn" parsed) "'call'") "this")))

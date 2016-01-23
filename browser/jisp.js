@@ -1385,7 +1385,7 @@
     return _res;
   }
   var vm, fs, path, beautify, utils, ops, operators, opFuncs, tokenise, lex, parse, Uniq, pr, spr, render, isAtom, isHash, isList, isVarName, isIdentifier, isService, getServicePart, assertExp, plusname, functionsRedeclare, functionsRedefine, specials, macros, functions;
-  exports.version = "0.3.3";
+  exports.version = "0.3.4";
   vm = require("vm");
   fs = require("fs");
   path = require("path");
@@ -3149,7 +3149,7 @@
       pretty: true
     };
     opts = utils.merge(defaults, opts);
-    parsed = parse(lex(tokenise(src)));
+    parsed = (Array.isArray(src) ? src : parse(lex(tokenise(src))));
     parsed.unshift("do");
     if (opts.wrap) parsed = [
       ["get", ["fn", parsed], "'call'"], "this"
