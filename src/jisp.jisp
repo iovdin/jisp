@@ -1087,10 +1087,20 @@
        (beautify (render compiled) (indent_size: 2))
        (render compiled)))))
 
-(= exports.eval (def jispEval src
-  (if (and (? vm) (? vm.runInThisContext))
-    (vm.runInThisContext src)
-    (eval src))))
+(def extend base hash
+     (do
+       (= result (:))
+       (over value key base
+             (= result[key] value))
+       (over value key hash
+             (= result[key] value))
+       result))
+
+(= exports.eval 
+   (def jispEval src
+        (if (and (? vm) (? vm.runInNewContext))
+          (vm.runInNewContext src (extend global exports))
+          (eval src))))
 
 ; Copied (more or less) from CoffeeScript source
 

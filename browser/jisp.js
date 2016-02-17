@@ -3171,8 +3171,25 @@
   }
   exports.compile = compile;
 
+  function extend(base, hash) {
+    var result, key, value, _ref, _ref0;
+    result = {};
+    _ref = base;
+    for (key in _ref) {
+      value = _ref[key];
+      result[key] = value;
+    }
+    _ref0 = hash;
+    for (key in _ref0) {
+      value = _ref0[key];
+      result[key] = value;
+    }
+    return result;
+  }
+  extend;
+
   function jispEval(src) {
-    return (((typeof vm !== 'undefined') && ((typeof vm !== 'undefined') && (typeof vm.runInThisContext !== 'undefined'))) ? vm.runInThisContext(src) : eval(src));
+    return (((typeof vm !== 'undefined') && ((typeof vm !== 'undefined') && (typeof vm.runInNewContext !== 'undefined'))) ? vm.runInNewContext(src, extend(global, exports)) : eval(src));
   }
   exports.eval = jispEval;
 
