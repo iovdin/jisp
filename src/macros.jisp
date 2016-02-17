@@ -195,3 +195,4 @@
              rest)))
 
 (= exports["vcs-commit"] vcsCommit)
+

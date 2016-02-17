@@ -415,15 +415,18 @@
           (macCompileAdd exp)))))
     (if isTopLevel (macDeclareOrHoist))))))
 
-(mac new-scope ...body
+
+
+
+(;mac new-scope ...body
      `((fn (do ,...body))))
 
-(mac do-recur ...params body
+(;mac do-recur ...params body
      `(new-scope
         (= recur (fn ,body))
         (recur ,...params)))
 
-(= specials.source
+(;= specials.source
    (fn form scope
        (Array
          (JSON.stringify
@@ -963,6 +966,48 @@
 
 ; Import and merge macros
 (importMacros (require "./macros"))
+
+(mac execSync env ...body
+     (do
+       (= 
+         module process.mainModule
+         newBody `(
+                   (= params (:))
+                   (try (= params (JSON.parse process.env.params)) 
+                        (catch err (prn "error" err)))
+                   (over value key params
+                         (= global[key] value))
+                   ,...body))
+
+       (= src (+ "'" (compile newBody (topScope: no wrap: no)) "'"))
+       (= src (src.replace /\n/g " "))
+       `(do
+          (= cp (require "child_process")
+             env (:))
+          (over value key process.env
+                (= env[key] value))
+          (= env.params (JSON.stringify ,env))
+          (= result (cp.spawnSync process.execPath (list "-e" ,src) (: "env" env)))
+          (if result.stdout.length
+            result.stdout
+            result.stderr))))
+
+(mac includeSource url
+     (do
+       (= 
+         require (any require process.mainModule.require) 
+         result (execSync (: "url" (JSON.parse ,url))
+                          (= http (require (if (< (url.indexOf "https") 0) 
+                                             "http" "https"))
+                             parsedURL ((require "url").parse url)
+                             req (http.request parsedURL (fn res (res.pipe process.stdout))))
+                          (req.end))
+         )
+       (= parsed (parse (lex (tokenise (result.toString 'utf-8')))))
+       (parsed.unshift "do")
+       parsed))
+
+(importMacros (execSync: execSync includeSource: includeSource))
 
 ; Parses form for macro definitions and makes macros, removing definitions from source
 (def parseMacros form
