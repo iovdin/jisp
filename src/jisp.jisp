@@ -979,15 +979,17 @@
                          (= global[key] value))
                    ,...body))
 
-       (= src (+ "'" (compile newBody (topScope: no wrap: no)) "'"))
-       (= src (src.replace /\n/g " "))
+       (= src (JSON.stringify (compile newBody (topScope: no wrap: no)) ))
        `(do
           (= cp (require "child_process")
              env (:))
           (over value key process.env
                 (= env[key] value))
-          (= env.params (JSON.stringify ,env))
-          (= result (cp.spawnSync process.execPath (list "-e" ,src) (: "env" env)))
+          (= env.params (JSON.stringify ,env)
+             env.scriptSource ,src)
+
+          (= result (cp.spawnSync process.execPath (list "-e" "require('vm').runInThisContext(process.env.scriptSource)")
+                      (: "env" env)))
           (if result.stdout.length
             result.stdout
             result.stderr))))
