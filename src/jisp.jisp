@@ -994,7 +994,7 @@
             result.stdout
             result.stderr))))
 
-(mac includeSource url
+(def load url 
      (do
        (= 
          require (any require process.mainModule.require) 
@@ -1005,11 +1005,21 @@
                              req (http.request parsedURL (fn res (res.pipe process.stdout))))
                           (req.end))
          )
-       (= parsed (parse (lex (tokenise (result.toString 'utf-8')))))
+       (result.toString 'utf-8')))
+
+
+
+
+
+(mac includeSource url
+     (do
+       (= parsed (parse (lex (tokenise (load ,url)))))
        (parsed.unshift "do")
        parsed))
 
+
 (importMacros (execSync: execSync includeSource: includeSource))
+
 
 ; Parses form for macro definitions and makes macros, removing definitions from source
 (def parseMacros form
@@ -1099,7 +1109,8 @@
       functions)))
 
 ; Import and merge functions
-(importFunctions (require "./functions"))
+
+(importFunctions (require "./functions") (load: load))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Export ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

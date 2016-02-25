@@ -1395,38 +1395,22 @@
       ],
       ["over", "value", "key", "params", ["=", "global[key]", "value"]]
     ]).concat(body);
-    src = "'" + compile(newBody, {
+    src = JSON.stringify(compile(newBody, {
       topScope: false,
       wrap: false
-    }) + "'";
-    src = src.replace(/\n/g, " ");
+    }));
     return ["do", ["=", "cp", ["require", "\"child_process\""], "env", {}],
       ["over", "value", "key", "process.env", ["=", "env[key]", "value"]],
-      ["=", "env.params", ["JSON.stringify", env]],
-      ["=", "result", ["cp.spawnSync", "process.execPath", ["list", "\"-e\"", src],
+      ["=", "env.params", ["JSON.stringify", env], "env.scriptSource", src],
+      ["=", "result", ["cp.spawnSync", "process.execPath", ["list", "\"-e\"", "\"require('vm').runInThisContext(process.env.scriptSource)\""],
         [":", "\"env\"", "env"]
       ]],
       ["if", "result.stdout.length", "result.stdout", "result.stderr"]
     ];
   };
   var includeSource = function(url) {
-    var require, cp, env, key, value, result, parsed, _ref;
-    require = ((typeof require !== 'undefined') && require) || (((typeof process !== 'undefined') && (typeof process.mainModule !== 'undefined') && (typeof process.mainModule.require !== 'undefined')) && process.mainModule.require);
-    cp = require("child_process");
-    env = {};
-    _ref = process.env;
-    for (key in _ref) {
-      value = _ref[key];
-      env[key] = value;
-    }
-    env.params = JSON.stringify({
-      "url": JSON.parse(url)
-    });
-    result = cp.spawnSync(process.execPath, list("-e", 'var params, key, value, http, parsedURL, req, _ref; params = {}; try {   params = JSON.parse(process.env.params); } catch (err) {   console.log("error", err); } _ref = params; for (key in _ref) {   value = _ref[key];   global[key] = value; } http = require(((url.indexOf("https") < 0) ? "http" : "https")); parsedURL = require("url").parse(url); req = http.request(parsedURL, (function(res) {   return res.pipe(process.stdout); })); req.end();'), {
-      "env": env
-    });
-    result = (result.stdout.length ? result.stdout : result.stderr);
-    parsed = parse(lex(tokenise(result.toString('utf-8'))));
+    var parsed;
+    parsed = parse(lex(tokenise(load(url))));
     parsed.unshift("do");
     return parsed;
   };
@@ -3019,6 +3003,28 @@
   }
   exports.importMacros = importMacros;
   importMacros(require("./macros"));
+
+  function load(url) {
+    var require, cp, env, key, value, result, _ref;
+    require = ((typeof require !== 'undefined') && require) || (((typeof process !== 'undefined') && (typeof process.mainModule !== 'undefined') && (typeof process.mainModule.require !== 'undefined')) && process.mainModule.require);
+    cp = require("child_process");
+    env = {};
+    _ref = process.env;
+    for (key in _ref) {
+      value = _ref[key];
+      env[key] = value;
+    }
+    env.params = JSON.stringify({
+      "url": JSON.parse(url)
+    });
+    env.scriptSource = "var params, key, value, http, parsedURL, req, _ref;\nparams = {};\ntry {\n  params = JSON.parse(process.env.params);\n} catch (err) {\n  console.log(\"error\", err);\n}\n_ref = params;\nfor (key in _ref) {\n  value = _ref[key];\n  global[key] = value;\n}\nhttp = require(((url.indexOf(\"https\") < 0) ? \"http\" : \"https\"));\nparsedURL = require(\"url\").parse(url);\nreq = http.request(parsedURL, (function(res) {\n  return res.pipe(process.stdout);\n}));\nreq.end();";
+    result = cp.spawnSync(process.execPath, list("-e", "require('vm').runInThisContext(process.env.scriptSource)"), {
+      "env": env
+    });
+    result = (result.stdout.length ? result.stdout : result.stderr);
+    return result.toString('utf-8');
+  }
+  load;
   importMacros({
     execSync: execSync,
     includeSource: includeSource
@@ -3146,7 +3152,9 @@
     return functions;
   }
   exports.importFunctions = importFunctions;
-  importFunctions(require("./functions"));
+  importFunctions(require("./functions"), {
+    load: load
+  });
   exports.utils = utils;
   exports.fileExtensions = [".jisp"];
   exports.register = (function() {
