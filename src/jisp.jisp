@@ -994,26 +994,25 @@
             result.stdout
             result.stderr))))
 
-(def load url 
-     (do
-       (= 
-         require (any require process.mainModule.require) 
-         result (execSync (: "url" (JSON.parse ,url))
-                          (= http (require (if (< (url.indexOf "https") 0) 
-                                             "http" "https"))
-                             parsedURL ((require "url").parse url)
-                             req (http.request parsedURL (fn res (res.pipe process.stdout))))
-                          (req.end))
-         )
-       (result.toString 'utf-8')))
 
 
-
-
+   (def load url 
+        (do
+          (def list …args `(…args))
+          (= 
+            require (any require process.mainModule.require) 
+            result (execSync (: "url" url)
+                             (= http (require (if (< (url.indexOf "https") 0) 
+                                                "http" "https"))
+                                parsedURL ((require "url").parse url)
+                                req (http.request parsedURL (fn res (res.pipe process.stdout))))
+                             (req.end))
+            )
+          (result.toString 'utf-8')))
 
 (mac includeSource url
      (do
-       (= parsed (parse (lex (tokenise (load ,url)))))
+       (= parsed (parse (lex (tokenise (load (JSON.parse url))))))
        (parsed.unshift "do")
        parsed))
 
