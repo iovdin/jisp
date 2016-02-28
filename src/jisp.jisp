@@ -1142,7 +1142,7 @@
    exports.tokenise       (fn src (tokenise src))
    exports.lex            (fn src (lex (tokenise src)))
    exports.parse          (fn src (parse (lex (tokenise src))))
-   exports.macroexpand    (fn src (macroexpand (parse (lex (tokenise src))))))
+   exports.macroexpand    (fn src (macroexpand (parseMacros (parse (lex (tokenise src)))))))
 
 (= exports.macros macros)        ; expose macros object for override by user
 (= exports.functions functions)  ; expose functions object for override by user
