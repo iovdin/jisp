@@ -1006,15 +1006,17 @@
               (req.send)
               req.responseText)
             (do
-              (= 
-                require (any require process.mainModule.require) 
-                result (execSync (: "url" url)
-                                 (= http (require (if (< (url.indexOf "https") 0) 
-                                                    "http" "https"))
-                                    parsedURL ((require "url").parse url)
-                                    req (http.request parsedURL (fn res (res.pipe process.stdout))))
-                                 (req.end))
-                )
+              (= require (any require process.mainModule.require))
+              (if (is (url.indexOf "http") -1)
+                (do
+                  (= fs (require "fs"))
+                  (return (fs.readFileSync url (: encoding "utf-8")))))
+              (= result (execSync (: "url" url)
+                                  (= http (require (if (< (url.indexOf "https") 0) 
+                                                     "http" "https"))
+                                     parsedURL ((require "url").parse url)
+                                     req (http.request parsedURL (fn res (res.pipe process.stdout))))
+                                  (req.end)))
               (result.toString 'utf-8')
               ))
           ))
@@ -1037,8 +1039,11 @@
        `(do 
           ,...(for arg args `(includeSource ,(JSON.stringify (+ "https://gist.githubusercontent.com/" repo "/raw/" arg)))))))
 
+(mac fileCheckout ...args
+     `(do 
+        ,...(for arg args `(includeSource ,arg))))
 
-(importMacros (: execSync execSync includeSource includeSource gistCheckout gistCheckout))
+(importMacros (: execSync execSync includeSource includeSource gistCheckout gistCheckout fileCheckout fileCheckout))
 
 
 ; Parses form for macro definitions and makes macros, removing definitions from source
