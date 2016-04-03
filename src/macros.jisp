@@ -57,13 +57,11 @@
 (= exports.prn macPrn)
 
 ; `car`: x[0]
-; `head`: x[0]
 (mac macCar x ...other (do
   (macOneArg x other)
   `(get ,x 0)))
 
 (= exports.car macCar)
-(= exports.head macCar)
 
 ; `cdr`: x.slice(1)
 ; `tail`: x.slice(1)

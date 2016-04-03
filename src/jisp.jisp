@@ -1033,8 +1033,8 @@
 (mac gistCheckout ...args
      (do
        (= repo "iovdin/2e3169e10a77ce91d9a9")
-       (if (isnt ((head args).indexOf "/") -1)
-         (= repo (head args)
+       (if (isnt ((car args).indexOf "/") -1)
+         (= repo (car args)
             args (tail args)))
        `(do 
           ,...(for arg args `(includeSource ,(JSON.stringify (+ "https://gist.githubusercontent.com/" repo "/raw/" arg)))))))
