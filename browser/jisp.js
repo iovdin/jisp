@@ -396,6 +396,21 @@
   }
   exports.list = list;
 
+  function log(obj) {
+    return (function(result) {
+      var key, value, _ref;
+      _ref = obj;
+      for (key in _ref) {
+        value = _ref[key];
+        result[key] = value;
+      }
+      return console.log(JSON.stringify(result));
+    })({
+      time: new Date()
+    });
+  }
+  exports.log = log;
+
   function range(start, end) {
     var a, _res, _ref;
     if ((typeof end === 'undefined')) {
@@ -1225,7 +1240,6 @@
   exports["::"] = macConcatHash;
   exports.prn = macPrn;
   exports.car = macCar;
-  exports.head = macCar;
   exports.cdr = macCdr;
   exports.tail = macCdr;
   exports.init = macInit;
@@ -1410,10 +1424,58 @@
   };
   var includeSource = function(url) {
     var parsed;
-    parsed = parse(lex(tokenise(load(url))));
+    parsed = parse(lex(tokenise(load(JSON.parse(url)))));
     parsed.unshift("do");
     return parsed;
   };
+  var gistCheckout = function() {
+    var repo, args, arg, _i, _i0, _res, _ref, _ref0;
+    var args = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
+    repo = "iovdin/2e3169e10a77ce91d9a9";
+    if ((args[0].indexOf("/") !== -1)) {
+      repo = args[0];
+      args = args["slice"](1);
+    }
+    _res = [];
+    _ref = args;
+    for (_i0 = 0; _i0 < _ref.length; ++_i0) {
+      arg = _ref[_i0];
+      if (typeof(_ref0 = ["includeSource", JSON.stringify("https://gist.githubusercontent.com/" + repo + "/raw/" + arg)]) !== 'undefined') _res.push(_ref0);
+    }
+    return [].concat(["do"]).concat(_res);
+  };
+  var fileCheckout = function() {
+    var arg, _i, _i0, _res, _ref, _ref0;
+    var args = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
+    _res = [];
+    _ref = args;
+    for (_i0 = 0; _i0 < _ref.length; ++_i0) {
+      arg = _ref[_i0];
+      if (typeof(_ref0 = ["includeSource", arg]) !== 'undefined') _res.push(_ref0);
+    }
+    return [].concat(["do"]).concat(_res);
+  };
+
+  function load(url) {
+    var require, cp, env, key, value, result, _ref;
+    require = ((typeof require !== 'undefined') && require) || (((typeof process !== 'undefined') && (typeof process.mainModule !== 'undefined') && (typeof process.mainModule.require !== 'undefined')) && process.mainModule.require);
+    cp = require("child_process");
+    env = {};
+    _ref = process.env;
+    for (key in _ref) {
+      value = _ref[key];
+      env[key] = value;
+    }
+    env.params = JSON.stringify({
+      "url": JSON.parse(url)
+    });
+    env.scriptSource = "var params, key, value, http, parsedURL, req, _ref;\nparams = {};\ntry {\n  params = JSON.parse(process.env.params);\n} catch (err) {\n  console.log(\"error\", err);\n}\n_ref = params;\nfor (key in _ref) {\n  value = _ref[key];\n  global[key] = value;\n}\nhttp = require(((url.indexOf(\"https\") < 0) ? \"http\" : \"https\"));\nparsedURL = require(\"url\").parse(url);\nreq = http.request(parsedURL, (function(res) {\n  return res.pipe(process.stdout);\n}));\nreq.end();";
+    result = cp.spawnSync(process.execPath, list("-e", "require('vm').runInThisContext(process.env.scriptSource)"), {
+      "env": env
+    });
+    result = (result.stdout.length ? result.stdout : result.stderr);
+    return result.toString('utf-8');
+  }
   var vm, fs, path, beautify, utils, ops, operators, opFuncs, tokenise, lex, parse, Uniq, pr, spr, render, isAtom, isHash, isList, isVarName, isIdentifier, isService, getServicePart, assertExp, plusname, functionsRedeclare, functionsRedefine, specials, macros, functions;
   exports.version = "0.3.4";
   vm = require("vm");
@@ -3005,29 +3067,52 @@
   importMacros(require("./macros"));
 
   function load(url) {
-    var require, cp, env, key, value, result, _ref;
-    require = ((typeof require !== 'undefined') && require) || (((typeof process !== 'undefined') && (typeof process.mainModule !== 'undefined') && (typeof process.mainModule.require !== 'undefined')) && process.mainModule.require);
-    cp = require("child_process");
-    env = {};
-    _ref = process.env;
-    for (key in _ref) {
-      value = _ref[key];
-      env[key] = value;
+    var req, require, cp, env, key, value, result, _ref, _ref0;
+
+    function list() {
+      var _i;
+      var args = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
+      return [].concat(args);
     }
-    env.params = JSON.stringify({
-      "url": JSON.parse(url)
-    });
-    env.scriptSource = "var params, key, value, http, parsedURL, req, _ref;\nparams = {};\ntry {\n  params = JSON.parse(process.env.params);\n} catch (err) {\n  console.log(\"error\", err);\n}\n_ref = params;\nfor (key in _ref) {\n  value = _ref[key];\n  global[key] = value;\n}\nhttp = require(((url.indexOf(\"https\") < 0) ? \"http\" : \"https\"));\nparsedURL = require(\"url\").parse(url);\nreq = http.request(parsedURL, (function(res) {\n  return res.pipe(process.stdout);\n}));\nreq.end();";
-    result = cp.spawnSync(process.execPath, list("-e", "require('vm').runInThisContext(process.env.scriptSource)"), {
-      "env": env
-    });
-    result = (result.stdout.length ? result.stdout : result.stderr);
-    return result.toString('utf-8');
+    list;
+    if ((typeof window !== 'undefined')) {
+      req = new window.XMLHttpRequest();
+      req.open("GET", url, false);
+      req.send();
+      _ref0 = req.responseText;
+    } else {
+      require = ((typeof require !== 'undefined') && require) || (((typeof process !== 'undefined') && (typeof process.mainModule !== 'undefined') && (typeof process.mainModule.require !== 'undefined')) && process.mainModule.require);
+      if ((url.indexOf("http") === -1)) {
+        fs = require("fs");
+        return fs.readFileSync(url, {
+          encoding: "utf-8"
+        });
+      }
+      cp = require("child_process");
+      env = {};
+      _ref = process.env;
+      for (key in _ref) {
+        value = _ref[key];
+        env[key] = value;
+      }
+      env.params = JSON.stringify({
+        "url": url
+      });
+      env.scriptSource = "var params, key, value, http, parsedURL, req, _ref;\nparams = {};\ntry {\n  params = JSON.parse(process.env.params);\n} catch (err) {\n  console.log(\"error\", err);\n}\n_ref = params;\nfor (key in _ref) {\n  value = _ref[key];\n  global[key] = value;\n}\nhttp = require(((url.indexOf(\"https\") < 0) ? \"http\" : \"https\"));\nparsedURL = require(\"url\").parse(url);\nreq = http.request(parsedURL, (function(res) {\n  return res.pipe(process.stdout);\n}));\nreq.end();";
+      result = cp.spawnSync(process.execPath, list("-e", "require('vm').runInThisContext(process.env.scriptSource)"), {
+        "env": env
+      });
+      result = (result.stdout.length ? result.stdout : result.stderr);
+      _ref0 = result.toString('utf-8');
+    }
+    return _ref0;
   }
   load;
   importMacros({
     execSync: execSync,
-    includeSource: includeSource
+    includeSource: includeSource,
+    gistCheckout: gistCheckout,
+    fileCheckout: fileCheckout
   });
 
   function parseMacros(form) {
@@ -3170,7 +3255,7 @@
     return parse(lex(tokenise(src)));
   });
   exports.macroexpand = (function(src) {
-    return macroexpand(parse(lex(tokenise(src))));
+    return macroexpand(parseMacros((Array.isArray(src) ? src : parse(lex(tokenise(src))))));
   });
   exports.macros = macros;
   exports.functions = functions;
