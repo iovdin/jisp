@@ -12,13 +12,6 @@
   }
   exports.concat = concat;
 
-  function list() {
-    var _i;
-    var args = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
-    return [].concat(args);
-  }
-  exports.list = list;
-
   function log(obj) {
     return (function(result) {
       var key, value, _ref, _len;

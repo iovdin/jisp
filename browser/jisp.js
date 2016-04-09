@@ -389,13 +389,6 @@
   }
   exports.concat = concat;
 
-  function list() {
-    var _i;
-    var args = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
-    return [].concat(args);
-  }
-  exports.list = list;
-
   function log(obj) {
     return (function(result) {
       var key, value, _ref, _len;
@@ -1165,12 +1158,6 @@
       [].concat(["fn"]).concat(names).concat([body])
     ]).concat(callArgs);
   };
-
-  function list() {
-    var _i;
-    var args = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
-    return [].concat(args);
-  }
   var macExist = function() {
     var value, comp, elements, _i, _i0, _res, _ref, _len, _ref0;
     var values = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
@@ -1249,9 +1236,7 @@
   function compartmentaliseExist(form) {
     var i, val, split, _ref, _res, _ref0, _len, _ref1;
     if ((utils.isList(form) && (form[0] === "get"))) {
-      _ref = list.apply(list, [].concat(compartmentaliseExist(form[1])).concat([
-        ["isnta", form, "'undefined'"]
-      ]));
+      _ref = [compartmentaliseExist(form[1]), ["isnta", form, "'undefined'"]];
     } else if ((typeof form === "string") && utils.isIdentifier(form) && !utils.isSpecialValueStr(form)) {
       _res = [];
       _ref0 = (split = utils.splitName(form));
@@ -1275,9 +1260,7 @@
   function compartmentaliseNotExist(form) {
     var i, val, split, _ref, _res, _ref0, _len, _ref1;
     if ((utils.isList(form) && (form[0] === "get"))) {
-      _ref = list.apply(list, [].concat(compartmentaliseNotExist(form[1])).concat([
-        ["isa", form, "'undefined'"]
-      ]));
+      _ref = [compartmentaliseNotExist(form[1]), ["isa", form, "'undefined'"]];
     } else if ((typeof form === "string") && utils.isIdentifier(form) && !utils.isSpecialValueStr(form)) {
       _res = [];
       _ref0 = (split = utils.splitName(form));
@@ -1372,12 +1355,6 @@
     })();require['./jisp'] = (function() {
       var exports = {}, module = {exports: exports};
       (function() {
-  function list() {
-    var _i;
-    var args = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
-    return [].concat(args);
-  }
-
   function range(start, end) {
     var a, _res, _ref;
     if ((typeof end === 'undefined')) {
@@ -2245,7 +2222,7 @@
           restname = name;
           restind = i;
           args[i] = restname;
-          rest = list("var " + name + " = " + args.length + " <= arguments.length ? [].slice.call(arguments, " + i + ", " + ind + " = arguments.length - " + (args.length - i - 1) + ") : (" + ind + " = " + restind + ", [])");
+          rest = ["var " + name + " = " + args.length + " <= arguments.length ? [].slice.call(arguments, " + i + ", " + ind + " = arguments.length - " + (args.length - i - 1) + ") : (" + ind + " = " + restind + ", [])"];
         } else {
           assertExp((name = arg[0]), isVarName, "valid parameter name");
           args[i] = name;
@@ -2390,7 +2367,7 @@
           restname = name;
           restind = i;
           args[i] = restname;
-          rest = list("var " + name + " = " + args.length + " <= arguments.length ? [].slice.call(arguments, " + i + ", " + ind + " = arguments.length - " + (args.length - i - 1) + ") : (" + ind + " = " + restind + ", [])");
+          rest = ["var " + name + " = " + args.length + " <= arguments.length ? [].slice.call(arguments, " + i + ", " + ind + " = arguments.length - " + (args.length - i - 1) + ") : (" + ind + " = " + restind + ", [])"];
         } else {
           assertExp((name = arg[0]), isVarName, "valid parameter name");
           args[i] = name;
@@ -3074,6 +3051,28 @@
     }
     return Array(buffer, scope);
   });
+  specials.list = (function(form, scope, opts, nested) {
+    var buffer, formName, nestedLocal, item, _i, _res, _ref, _len, _ref0, _i0;
+    if ((typeof opts === 'undefined')) opts = {};
+    buffer = [];
+    form = form.slice();
+    formName = form.shift();
+    nestedLocal = ((typeof nested !== 'undefined') ? nested : true);
+    nested = undefined;
+    _res = [];
+    _ref = form;
+    for (_i = 0, _len = _ref.length; _i < _len; ++_i) {
+      item = _ref[_i];
+      _ref0 = compileGetLast(item, buffer, scope, opts, nested);
+      item = _ref0[0];
+      buffer = _ref0[1];
+      scope = _ref0[2];
+      if (typeof item !== 'undefined') _res.push(item);
+    }
+    buffer.push("[" + _res
+      .join(", ") + "]");
+    return Array(buffer, scope);
+  });
   macros = {};
 
   function importMacros() {
@@ -3126,7 +3125,7 @@
         "url": url
       });
       env.scriptSource = "var params, key, value, http, parsedURL, req, _ref, _len;\nparams = {};\ntry {\n  params = JSON.parse(process.env.params);\n} catch (err) {\n  console.log(\"error\", err);\n}\n_ref = params;\nfor (key in _ref) {\n  value = _ref[key];\n  global[key] = value;\n}\nhttp = require(((url.indexOf(\"https\") < 0) ? \"http\" : \"https\"));\nparsedURL = require(\"url\").parse(url);\nreq = http.request(parsedURL, (function(res) {\n  return res.pipe(process.stdout);\n}));\nreq.end();";
-      result = cp.spawnSync(process.execPath, list("-e", "require('vm').runInThisContext(process.env.scriptSource)"), {
+      result = cp.spawnSync(process.execPath, ["-e", "require('vm').runInThisContext(process.env.scriptSource)"], {
         "env": env
       });
       result = (result.stdout.length ? result.stdout : result.stderr);

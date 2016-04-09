@@ -952,6 +952,19 @@
             (= form (+ "return " (pr form))))
         (buffer.push form)))))))
 
+(= specials.list 
+   (macCompileSpecial 
+     (code: (do
+              (buffer.push 
+                (+ "[" 
+                   (do
+                     (for item form
+                          (do
+                            (macCompileGetLast item item)
+                            item))
+                     (.join ", "))
+                   "]"))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Macros ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; Macro store
