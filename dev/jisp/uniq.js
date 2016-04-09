@@ -3,7 +3,7 @@
   utils = require("./utils");
 
   function Uniq(uniq, store) {
-    var of, name, _ref;
+    var of, name, _ref, _len;
     this.parent = uniq;
     this.store = {};
     if (store) {

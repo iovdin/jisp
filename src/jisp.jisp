@@ -827,6 +827,7 @@
           (do (macDeclareService collector "_res")  ; array for iteration results
               (buffer.push (+ collector " = []"))))
       (macDeclareService ref "_ref")  ; iterable
+      (macDeclareService len "_len")
       (macCompileGetLast iterable iterable)
       (buffer.push (+ ref " = " (pr iterable)))
       ; if this isn't nested, further compiled body should be aware of that
@@ -836,7 +837,7 @@
       (if (and nestedLocal (not (utils.kwtest (pr (last body)))))
         (macCollect))
       ,(if (is type "for")
-        `(buffer.push (+ "for (" key " = 0; " key " < " ref ".length; ++" key ") { " value " = " ref "[" key "]; " (render body) " }"))
+        `(buffer.push (+ "for (" key " = 0, " len " = " ref ".length; " key " < " len "; ++" key ") { " value " = " ref "[" key "]; " (render body) " }"))
         (elif (is type "over")
          `(buffer.push (+ "for (" key " in " ref ") { " value " = " ref "[" key "]; " (render body) " }"))))
       (if nestedLocal

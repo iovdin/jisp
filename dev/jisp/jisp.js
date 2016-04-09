@@ -56,7 +56,7 @@
     return parsed;
   };
   var gistCheckout = function() {
-    var repo, args, arg, _i, _i0, _res, _ref, _ref0;
+    var repo, args, arg, _i, _i0, _res, _ref, _len, _ref0;
     var args = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
     repo = "iovdin/2e3169e10a77ce91d9a9";
     if ((args[0].indexOf("/") !== -1)) {
@@ -65,18 +65,18 @@
     }
     _res = [];
     _ref = args;
-    for (_i0 = 0; _i0 < _ref.length; ++_i0) {
+    for (_i0 = 0, _len = _ref.length; _i0 < _len; ++_i0) {
       arg = _ref[_i0];
       if (typeof(_ref0 = ["includeSource", JSON.stringify("https://gist.githubusercontent.com/" + repo + "/raw/" + arg)]) !== 'undefined') _res.push(_ref0);
     }
     return [].concat(["do"]).concat(_res);
   };
   var fileCheckout = function() {
-    var arg, _i, _i0, _res, _ref, _ref0;
+    var arg, _i, _i0, _res, _ref, _len, _ref0;
     var args = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
     _res = [];
     _ref = args;
-    for (_i0 = 0; _i0 < _ref.length; ++_i0) {
+    for (_i0 = 0, _len = _ref.length; _i0 < _len; ++_i0) {
       arg = _ref[_i0];
       if (typeof(_ref0 = ["includeSource", arg]) !== 'undefined') _res.push(_ref0);
     }
@@ -84,24 +84,45 @@
   };
 
   function load(url) {
-    var require, cp, env, key, value, result, _ref;
-    require = ((typeof require !== 'undefined') && require) || (((typeof process !== 'undefined') && (typeof process.mainModule !== 'undefined') && (typeof process.mainModule.require !== 'undefined')) && process.mainModule.require);
-    cp = require("child_process");
-    env = {};
-    _ref = process.env;
-    for (key in _ref) {
-      value = _ref[key];
-      env[key] = value;
+    var req, require, cp, env, key, value, result, _ref, _len, _ref0;
+
+    function list() {
+      var _i;
+      var args = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
+      return [].concat(args);
     }
-    env.params = JSON.stringify({
-      "url": JSON.parse(url)
-    });
-    env.scriptSource = "var params, key, value, http, parsedURL, req, _ref;\nparams = {};\ntry {\n  params = JSON.parse(process.env.params);\n} catch (err) {\n  console.log(\"error\", err);\n}\n_ref = params;\nfor (key in _ref) {\n  value = _ref[key];\n  global[key] = value;\n}\nhttp = require(((url.indexOf(\"https\") < 0) ? \"http\" : \"https\"));\nparsedURL = require(\"url\").parse(url);\nreq = http.request(parsedURL, (function(res) {\n  return res.pipe(process.stdout);\n}));\nreq.end();";
-    result = cp.spawnSync(process.execPath, list("-e", "require('vm').runInThisContext(process.env.scriptSource)"), {
-      "env": env
-    });
-    result = (result.stdout.length ? result.stdout : result.stderr);
-    return result.toString('utf-8');
+    list;
+    if ((typeof window !== 'undefined')) {
+      req = new window.XMLHttpRequest();
+      req.open("GET", url, false);
+      req.send();
+      _ref0 = req.responseText;
+    } else {
+      require = ((typeof require !== 'undefined') && require) || (((typeof process !== 'undefined') && (typeof process.mainModule !== 'undefined') && (typeof process.mainModule.require !== 'undefined')) && process.mainModule.require);
+      if ((url.indexOf("http") === -1)) {
+        fs = require("fs");
+        return fs.readFileSync(url, {
+          encoding: "utf-8"
+        });
+      }
+      cp = require("child_process");
+      env = {};
+      _ref = process.env;
+      for (key in _ref) {
+        value = _ref[key];
+        env[key] = value;
+      }
+      env.params = JSON.stringify({
+        "url": url
+      });
+      env.scriptSource = "var params, key, value, http, parsedURL, req, _ref, _len;\nparams = {};\ntry {\n  params = JSON.parse(process.env.params);\n} catch (err) {\n  console.log(\"error\", err);\n}\n_ref = params;\nfor (key in _ref) {\n  value = _ref[key];\n  global[key] = value;\n}\nhttp = require(((url.indexOf(\"https\") < 0) ? \"http\" : \"https\"));\nparsedURL = require(\"url\").parse(url);\nreq = http.request(parsedURL, (function(res) {\n  return res.pipe(process.stdout);\n}));\nreq.end();";
+      result = cp.spawnSync(process.execPath, list("-e", "require('vm').runInThisContext(process.env.scriptSource)"), {
+        "env": env
+      });
+      result = (result.stdout.length ? result.stdout : result.stderr);
+      _ref0 = result.toString('utf-8');
+    }
+    return _ref0;
   }
   var vm, fs, path, beautify, utils, ops, operators, opFuncs, tokenise, lex, parse, Uniq, pr, spr, render, isAtom, isHash, isList, isVarName, isIdentifier, isService, getServicePart, assertExp, plusname, functionsRedeclare, functionsRedefine, specials, macros, functions;
   exports.version = "0.3.4";
@@ -159,7 +180,7 @@
   hasSpread;
 
   function compileResolve(form, buffer, scope, opts, nested) {
-    var compiled, i, name, newname, re, subst, str, _ref, _i, _ref0, _ref1;
+    var compiled, i, name, newname, re, subst, str, _ref, _i, _ref0, _len, _ref1, _len0;
     _ref = compileForm(form, scope, opts, nested);
     compiled = _ref[0];
     scope = _ref[1];
@@ -175,7 +196,7 @@
         re = RegExp("(?=(?:[^$#_A-Za-z0-9]{1}|^)" + name + "(?:[^$#_A-Za-z0-9]{1}|$))([^$#_A-Za-z0-9]|^)" + name, "g");
         subst = "$1" + newname;
         _ref1 = buffer;
-        for (i = 0; i < _ref1.length; ++i) {
+        for (i = 0, _len0 = _ref1.length; i < _len0; ++i) {
           str = _ref1[i];
           if (((typeof str !== 'undefined') && (typeof str === "string"))) buffer[i] = str.replace(re, subst);
         }
@@ -224,10 +245,10 @@
   returnify;
 
   function getArgNames(args) {
-    var arr, arg, _i, _ref;
+    var arr, arg, _i, _ref, _len;
     arr = [];
     _ref = args;
-    for (_i = 0; _i < _ref.length; ++_i) {
+    for (_i = 0, _len = _ref.length; _i < _len; ++_i) {
       arg = _ref[_i];
       if ((isAtom(arg) && isVarName(arg))) {
         arr.push(arg);
@@ -250,7 +271,7 @@
   isPropertyExp;
 
   function compileForm(form, scope, opts, nested) {
-    var buffer, nestedLocal, first, isOuterOperator, innerType, i, arg, argsSpread, split, method, name, collector, oldReplace, serv, re, key, val, _ref, _i, _ref0, _i0, _ref1, _i1, _ref2, _ref3, _i2, _ref4, _i3, _ref5, _i4, _ref6, _i5, _ref7, _i6, _ref8, _i7, _ref9, _i8, _ref10, _ref11, _i9, _ref12, _i10, _ref13, _i11, _ref14, _ref15, _i12;
+    var buffer, nestedLocal, first, isOuterOperator, innerType, i, arg, argsSpread, split, method, name, collector, oldReplace, serv, re, key, val, _ref, _i, _ref0, _i0, _ref1, _i1, _ref2, _len, _ref3, _i2, _ref4, _i3, _ref5, _i4, _ref6, _i5, _ref7, _i6, _ref8, _i7, _ref9, _i8, _ref10, _ref11, _i9, _ref12, _i10, _ref13, _i11, _ref14, _len0, _ref15, _i12;
     if ((typeof opts === 'undefined')) opts = {};
     if ((isList(form) && utils.isBlankObject(form))) {
       _ref10 = [
@@ -351,7 +372,7 @@
           delete opts.compilingOperator;
         }
         _ref2 = form;
-        for (i = 0; i < _ref2.length; ++i) {
+        for (i = 0, _len = _ref2.length; i < _len; ++i) {
           arg = _ref2[i];
           if (hasSpread(arg)) {
             argsSpread = true;
@@ -418,7 +439,7 @@
   compileForm;
   specials = {};
   specials.do = (function(form, scope, opts, nested) {
-    var buffer, formName, nestedLocal, isTopLevel, outerScope, i, exp, ref, vars, funcs, dec, args, name, func, _ref, _ref0, _i, _ref1, _i0, _i1, _ref2, _i2, _ref3, _i3, _ref4;
+    var buffer, formName, nestedLocal, isTopLevel, outerScope, i, exp, ref, vars, funcs, dec, args, name, func, _ref, _len, _ref0, _i, _ref1, _i0, _i1, _ref2, _len0, _i2, _ref3, _len1, _i3, _ref4, _len2;
     if ((typeof opts === 'undefined')) opts = {};
     buffer = [];
     form = form.slice();
@@ -435,7 +456,7 @@
       delete opts.topScope;
     }
     _ref = form;
-    for (i = 0; i < _ref.length; ++i) {
+    for (i = 0, _len = _ref.length; i < _len; ++i) {
       exp = _ref[i];
       nested = (!isTopLevel && (i === (form.length - 1)) && nestedLocal) || isPropertyExp(form[i + 1]);
       if ((typeof exp === 'undefined')) {
@@ -461,7 +482,7 @@
       dec = "var ";
       if ((typeof args === 'undefined')) args = [];
       _ref2 = scope.hoist;
-      for (_i1 = 0; _i1 < _ref2.length; ++_i1) {
+      for (_i1 = 0, _len0 = _ref2.length; _i1 < _len0; ++_i1) {
         name = _ref2[_i1];
         if ((!([].indexOf.call(outerScope.hoist, name) >= 0) && !([].indexOf.call(args, name) >= 0))) {
           if (([].indexOf.call(Object.keys(functions), name) >= 0)) {
@@ -478,7 +499,7 @@
         }
       }
       _ref3 = scope.service;
-      for (_i2 = 0; _i2 < _ref3.length; ++_i2) {
+      for (_i2 = 0, _len1 = _ref3.length; _i2 < _len1; ++_i2) {
         name = _ref3[_i2];
         if (!([].indexOf.call(outerScope.service, name) >= 0)) vars.push(name);
       }
@@ -518,7 +539,7 @@
         }
       } else {
         _ref4 = funcs;
-        for (_i3 = 0; _i3 < _ref4.length; ++_i3) {
+        for (_i3 = 0, _len2 = _ref4.length; _i3 < _len2; ++_i3) {
           func = _ref4[_i3];
           if (!([].indexOf.call(outerScope.hoist, func) >= 0)) outerScope.hoist.push(func);
         }
@@ -528,7 +549,7 @@
     return Array(buffer, scope);
   });
   specials.quote = (function(form, scope, opts, nested) {
-    var buffer, formName, nestedLocal, arr, res, exp, i, item, key, newform, _i, _ref, _ref0, _i0, _ref1, _i1, _ref2, _i2, _ref3, _i3, _ref4, _i4, _ref5, _ref6, _i5, _ref7, _i6, _ref8, _ref9, _i7, _ref10, _ref11, _i8;
+    var buffer, formName, nestedLocal, arr, res, exp, i, item, key, newform, _i, _ref, _len, _ref0, _i0, _ref1, _i1, _ref2, _i2, _ref3, _i3, _ref4, _i4, _ref5, _len0, _ref6, _i5, _ref7, _i6, _ref8, _len1, _ref9, _i7, _ref10, _len2, _ref11, _i8;
     if ((typeof opts === 'undefined')) opts = {};
     buffer = [];
     form = form.slice();
@@ -570,7 +591,7 @@
       arr = [];
       res = "[]";
       _ref = form;
-      for (_i = 0; _i < _ref.length; ++_i) {
+      for (_i = 0, _len = _ref.length; _i < _len; ++_i) {
         exp = _ref[_i];
         if ((isList(exp) && (exp[0] === "quote") && isList(exp[1]) && (exp[1].length === 0))) {
           arr.push([]);
@@ -600,7 +621,7 @@
           if (((typeof exp !== 'undefined') && opts.macro)) {
             if (isList(exp)) {
               _ref5 = exp;
-              for (i = 0; i < _ref5.length; ++i) {
+              for (i = 0, _len0 = _ref5.length; i < _len0; ++i) {
                 item = _ref5[i];
                 if (isAtom(item)) {
                   _ref6 = compileGetLast(["quote", item], buffer, scope, opts, nested);
@@ -667,7 +688,7 @@
     return Array(buffer, scope);
   });
   specials["="] = (function(form, scope, opts, nested) {
-    var buffer, formName, nestedLocal, left, right, lastAssign, res, ref, ind, spreads, i, name, spreadname, spreadind, _ref, _i, _ref0, _i0, _ref1, _i1, _ref2, _i2, _ref3, _i3, _ref4, _i4, _ref5, _i5, _ref6, _i6, _ref7, _ref8, _i7, _ref9, _i8, _ref10, _i9, _ref11, _i10, _ref12, _i11, _ref13, _i12;
+    var buffer, formName, nestedLocal, left, right, lastAssign, res, ref, ind, spreads, i, name, spreadname, spreadind, _ref, _i, _ref0, _i0, _ref1, _i1, _ref2, _i2, _ref3, _i3, _ref4, _i4, _ref5, _i5, _ref6, _i6, _ref7, _len, _ref8, _i7, _ref9, _i8, _ref10, _i9, _ref11, _i10, _ref12, _i11, _ref13, _i12;
     if ((typeof opts === 'undefined')) opts = {};
     buffer = [];
     form = form.slice();
@@ -725,7 +746,7 @@
           buffer.push(ref + " = " + pr(right));
           spreads = 0;
           _ref7 = left;
-          for (i = 0; i < _ref7.length; ++i) {
+          for (i = 0, _len = _ref7.length; i < _len; ++i) {
             name = _ref7[i];
             if ((name[0] === "spread")) {
               if ((++spreads > 1)) throw Error("an assignment can only have one spread");
@@ -808,7 +829,7 @@
     return Array(buffer, scope);
   });
   specials.fn = (function(form, scope, opts, nested) {
-    var buffer, formName, nestedLocal, outerScope, args, body, optionals, spreads, i, arg, ind, name, restname, restind, rest, vars, funcs, dec, func, _ref, _i, _ref0, _ref1, _i0, _ref2, _i1, _ref3, _i2, _ref4, _i3, _i4, _ref5, _i5, _ref6, _i6, _ref7;
+    var buffer, formName, nestedLocal, outerScope, args, body, optionals, spreads, i, arg, ind, name, restname, restind, rest, vars, funcs, dec, func, _ref, _i, _ref0, _len, _ref1, _i0, _ref2, _i1, _ref3, _i2, _ref4, _i3, _i4, _ref5, _len0, _i5, _ref6, _len1, _i6, _ref7, _len2;
     if ((typeof opts === 'undefined')) opts = {};
     buffer = [];
     form = form.slice();
@@ -826,7 +847,7 @@
     optionals = [];
     spreads = 0;
     _ref0 = args;
-    for (i = 0; i < _ref0.length; ++i) {
+    for (i = 0, _len = _ref0.length; i < _len; ++i) {
       arg = _ref0[i];
       if ((isList(arg) && ([].indexOf.call(Object.keys(macros), arg[0]) >= 0))) {
         _ref1 = compileGetLast(arg, buffer, scope, opts, nested);
@@ -876,7 +897,7 @@
     dec = "var ";
     if ((typeof args === 'undefined')) args = [];
     _ref5 = scope.hoist;
-    for (_i4 = 0; _i4 < _ref5.length; ++_i4) {
+    for (_i4 = 0, _len0 = _ref5.length; _i4 < _len0; ++_i4) {
       name = _ref5[_i4];
       if ((!([].indexOf.call(outerScope.hoist, name) >= 0) && !([].indexOf.call(args, name) >= 0))) {
         if (([].indexOf.call(Object.keys(functions), name) >= 0)) {
@@ -893,7 +914,7 @@
       }
     }
     _ref6 = scope.service;
-    for (_i5 = 0; _i5 < _ref6.length; ++_i5) {
+    for (_i5 = 0, _len1 = _ref6.length; _i5 < _len1; ++_i5) {
       name = _ref6[_i5];
       if (!([].indexOf.call(outerScope.service, name) >= 0)) vars.push(name);
     }
@@ -933,7 +954,7 @@
       }
     } else {
       _ref7 = funcs;
-      for (_i6 = 0; _i6 < _ref7.length; ++_i6) {
+      for (_i6 = 0, _len2 = _ref7.length; _i6 < _len2; ++_i6) {
         func = _ref7[_i6];
         if (!([].indexOf.call(outerScope.hoist, func) >= 0)) outerScope.hoist.push(func);
       }
@@ -943,7 +964,7 @@
     return Array(buffer, scope);
   });
   specials.def = (function(form, scope, opts, nested) {
-    var buffer, formName, nestedLocal, outerScope, fname, args, body, optionals, spreads, i, arg, ind, name, restname, restind, rest, vars, funcs, dec, func, _ref, _i, _ref0, _i0, _ref1, _ref2, _i1, _ref3, _i2, _ref4, _i3, _ref5, _i4, _i5, _ref6, _i6, _ref7, _i7, _ref8;
+    var buffer, formName, nestedLocal, outerScope, fname, args, body, optionals, spreads, i, arg, ind, name, restname, restind, rest, vars, funcs, dec, func, _ref, _i, _ref0, _i0, _ref1, _len, _ref2, _i1, _ref3, _i2, _ref4, _i3, _ref5, _i4, _i5, _ref6, _len0, _i6, _ref7, _len1, _i7, _ref8, _len2;
     if ((typeof opts === 'undefined')) opts = {};
     buffer = [];
     form = form.slice();
@@ -971,7 +992,7 @@
     optionals = [];
     spreads = 0;
     _ref1 = args;
-    for (i = 0; i < _ref1.length; ++i) {
+    for (i = 0, _len = _ref1.length; i < _len; ++i) {
       arg = _ref1[i];
       if ((isList(arg) && ([].indexOf.call(Object.keys(macros), arg[0]) >= 0))) {
         _ref2 = compileGetLast(arg, buffer, scope, opts, nested);
@@ -1021,7 +1042,7 @@
     dec = "var ";
     if ((typeof args === 'undefined')) args = [];
     _ref6 = scope.hoist;
-    for (_i5 = 0; _i5 < _ref6.length; ++_i5) {
+    for (_i5 = 0, _len0 = _ref6.length; _i5 < _len0; ++_i5) {
       name = _ref6[_i5];
       if ((!([].indexOf.call(outerScope.hoist, name) >= 0) && !([].indexOf.call(args, name) >= 0))) {
         if (([].indexOf.call(Object.keys(functions), name) >= 0)) {
@@ -1038,7 +1059,7 @@
       }
     }
     _ref7 = scope.service;
-    for (_i6 = 0; _i6 < _ref7.length; ++_i6) {
+    for (_i6 = 0, _len1 = _ref7.length; _i6 < _len1; ++_i6) {
       name = _ref7[_i6];
       if (!([].indexOf.call(outerScope.service, name) >= 0)) vars.push(name);
     }
@@ -1078,7 +1099,7 @@
       }
     } else {
       _ref8 = funcs;
-      for (_i7 = 0; _i7 < _ref8.length; ++_i7) {
+      for (_i7 = 0, _len2 = _ref8.length; _i7 < _len2; ++_i7) {
         func = _ref8[_i7];
         if (!([].indexOf.call(outerScope.hoist, func) >= 0)) outerScope.hoist.push(func);
       }
@@ -1116,7 +1137,7 @@
   }
   collect;
   specials.if = (function(form, scope, opts, nested) {
-    var buffer, formName, nestedLocal, predicate, prebranch, midcases, postbranch, res, collector, i, mid, midtest, midbranch, comp, _ref, _i, _ref0, _i0, _ref1, _i1, _ref2, _i2, _ref3, _i3, _ref4, _ref5, _i4, _ref6, _i5, _ref7, _i6, _i7, _ref8;
+    var buffer, formName, nestedLocal, predicate, prebranch, midcases, postbranch, res, collector, i, mid, midtest, midbranch, comp, _ref, _i, _ref0, _i0, _ref1, _i1, _ref2, _i2, _ref3, _i3, _ref4, _len, _ref5, _i4, _ref6, _i5, _ref7, _i6, _i7, _ref8, _len0;
     if ((typeof opts === 'undefined')) opts = {};
     buffer = [];
     form = form.slice();
@@ -1163,7 +1184,7 @@
       prebranch = collect(prebranch, collector, false, nestedLocal);
       postbranch = collect(postbranch, collector, false, nestedLocal);
       _ref4 = midcases;
-      for (i = 0; i < _ref4.length; ++i) {
+      for (i = 0, _len = _ref4.length; i < _len; ++i) {
         mid = _ref4[i];
         assertExp(mid, (function(x) {
           return (x.shift() === "elif");
@@ -1188,7 +1209,7 @@
       }
       comp = "if (" + pr(predicate) + ") { " + render(prebranch) + " } ";
       _ref8 = midcases;
-      for (_i7 = 0; _i7 < _ref8.length; ++_i7) {
+      for (_i7 = 0, _len0 = _ref8.length; _i7 < _len0; ++_i7) {
         mid = _ref8[_i7];
         comp += (" else if (" + spr(mid.test) + ") { " + render(mid.branch) + " }");
       }
@@ -1199,7 +1220,7 @@
     return Array(buffer, scope);
   });
   specials.switch = (function(form, scope, opts, nested) {
-    var buffer, formName, nestedLocal, predicate, midcases, postbranch, collector, i, mid, midtest, midbranch, comp, _ref, _i, _ref0, _i0, _ref1, _i1, _ref2, _ref3, _i2, _ref4, _i3, _ref5, _i4, _ref6, _i5, _i6, _ref7;
+    var buffer, formName, nestedLocal, predicate, midcases, postbranch, collector, i, mid, midtest, midbranch, comp, _ref, _i, _ref0, _i0, _ref1, _i1, _ref2, _len, _ref3, _i2, _ref4, _i3, _ref5, _i4, _ref6, _i5, _i6, _ref7, _len0;
     if ((typeof opts === 'undefined')) opts = {};
     buffer = [];
     form = form.slice();
@@ -1226,7 +1247,7 @@
     if ((typeof predicate === 'undefined')) predicate = "false";
     nested = nestedLocal;
     _ref2 = midcases;
-    for (i = 0; i < _ref2.length; ++i) {
+    for (i = 0, _len = _ref2.length; i < _len; ++i) {
       mid = _ref2[i];
       assertExp(mid, (function(x) {
         return (x.shift() === "case");
@@ -1256,7 +1277,7 @@
     postbranch = collect(postbranch, collector, false, nestedLocal);
     comp = "switch (" + pr(predicate) + ") { ";
     _ref7 = midcases;
-    for (_i6 = 0; _i6 < _ref7.length; ++_i6) {
+    for (_i6 = 0, _len0 = _ref7.length; _i6 < _len0; ++_i6) {
       mid = _ref7[_i6];
       comp += (" case " + spr(mid.test) + ": " + render(mid.branch));
     }
@@ -1266,7 +1287,7 @@
     return Array(buffer, scope);
   });
   specials.for = (function(form, scope, opts, nested) {
-    var buffer, formName, nestedLocal, value, key, iterable, body, collector, ref, rear, subst, tested, _ref, _i, _ref0, _i0, _ref1, _i1, _ref2, _i2, _ref3, _i3, _ref4, _i4, _ref5, _i5, _ref6, _i6, _ref7, _i7, _ref8, _i8, _ref9, _i9, _ref10, _i10, _ref11, _i11;
+    var buffer, formName, nestedLocal, value, key, iterable, body, collector, ref, len, rear, subst, tested, _ref, _i, _ref0, _i0, _ref1, _i1, _ref2, _i2, _ref3, _i3, _ref4, _i4, _ref5, _i5, _ref6, _i6, _ref7, _i7, _ref8, _i8, _ref9, _i9, _ref10, _i10, _ref11, _i11, _ref12, _i12;
     if ((typeof opts === 'undefined')) opts = {};
     buffer = [];
     form = form.slice();
@@ -1341,39 +1362,42 @@
     _ref7 = declareService("_ref", scope, (opts.function ? args : undefined));
     ref = _ref7[0];
     scope = _ref7[1];
-    _ref8 = compileGetLast(iterable, buffer, scope, opts, nested);
-    iterable = _ref8[0];
-    buffer = _ref8[1];
-    scope = _ref8[2];
-    buffer.push(ref + " = " + pr(iterable));
-    nested = nestedLocal;
-    _ref9 = compileResolve(body, buffer, scope, opts, nested);
-    body = _ref9[0];
+    _ref8 = declareService("_len", scope, (opts.function ? args : undefined));
+    len = _ref8[0];
+    scope = _ref8[1];
+    _ref9 = compileGetLast(iterable, buffer, scope, opts, nested);
+    iterable = _ref9[0];
     buffer = _ref9[1];
     scope = _ref9[2];
+    buffer.push(ref + " = " + pr(iterable));
+    nested = nestedLocal;
+    _ref10 = compileResolve(body, buffer, scope, opts, nested);
+    body = _ref10[0];
+    buffer = _ref10[1];
+    scope = _ref10[2];
     if ((nestedLocal && !utils.kwtest(pr(body["slice"](-1)[0])))) {
       rear = body.pop();
       if ((utils.isPrimitive(rear) || utils.isString(rear) || utils.isSpecialValue(rear) || utils.isSpecialValueStr(rear))) {
         body.push(collector + ".push(" + pr(rear) + ")");
       } else if (isIdentifier(rear)) {
-        _ref11 = compileGetLast(["?", rear], buffer, scope, opts, "parens");
-        tested = _ref11[0];
-        buffer = _ref11[1];
-        scope = _ref11[2];
+        _ref12 = compileGetLast(["?", rear], buffer, scope, opts, "parens");
+        tested = _ref12[0];
+        buffer = _ref12[1];
+        scope = _ref12[2];
         body.push("if (" + tested + ") " + collector + ".push(" + pr(rear) + ")");
       } else {
-        _ref10 = declareService("_ref", scope, (opts.function ? args : undefined));
-        subst = _ref10[0];
-        scope = _ref10[1];
+        _ref11 = declareService("_ref", scope, (opts.function ? args : undefined));
+        subst = _ref11[0];
+        scope = _ref11[1];
         body.push("if (typeof (" + subst + " = " + pr(rear) + ") !== 'undefined') " + collector + ".push(" + subst + ")");
       }
     }
-    buffer.push("for (" + key + " = 0; " + key + " < " + ref + ".length; ++" + key + ") { " + value + " = " + ref + "[" + key + "]; " + render(body) + " }");
+    buffer.push("for (" + key + " = 0, " + len + " = " + ref + ".length; " + key + " < " + len + "; ++" + key + ") { " + value + " = " + ref + "[" + key + "]; " + render(body) + " }");
     nestedLocal ? buffer.push(collector) : buffer.push("");
     return Array(buffer, scope);
   });
   specials.over = (function(form, scope, opts, nested) {
-    var buffer, formName, nestedLocal, value, key, iterable, body, collector, ref, rear, subst, tested, _ref, _i, _ref0, _i0, _ref1, _i1, _ref2, _i2, _ref3, _i3, _ref4, _i4, _ref5, _i5, _ref6, _i6, _ref7, _i7, _ref8, _i8, _ref9, _i9, _ref10, _i10, _ref11, _i11;
+    var buffer, formName, nestedLocal, value, key, iterable, body, collector, ref, len, rear, subst, tested, _ref, _i, _ref0, _i0, _ref1, _i1, _ref2, _i2, _ref3, _i3, _ref4, _i4, _ref5, _i5, _ref6, _i6, _ref7, _i7, _ref8, _i8, _ref9, _i9, _ref10, _i10, _ref11, _i11, _ref12, _i12;
     if ((typeof opts === 'undefined')) opts = {};
     buffer = [];
     form = form.slice();
@@ -1445,30 +1469,33 @@
     _ref7 = declareService("_ref", scope, (opts.function ? args : undefined));
     ref = _ref7[0];
     scope = _ref7[1];
-    _ref8 = compileGetLast(iterable, buffer, scope, opts, nested);
-    iterable = _ref8[0];
-    buffer = _ref8[1];
-    scope = _ref8[2];
-    buffer.push(ref + " = " + pr(iterable));
-    nested = nestedLocal;
-    _ref9 = compileResolve(body, buffer, scope, opts, nested);
-    body = _ref9[0];
+    _ref8 = declareService("_len", scope, (opts.function ? args : undefined));
+    len = _ref8[0];
+    scope = _ref8[1];
+    _ref9 = compileGetLast(iterable, buffer, scope, opts, nested);
+    iterable = _ref9[0];
     buffer = _ref9[1];
     scope = _ref9[2];
+    buffer.push(ref + " = " + pr(iterable));
+    nested = nestedLocal;
+    _ref10 = compileResolve(body, buffer, scope, opts, nested);
+    body = _ref10[0];
+    buffer = _ref10[1];
+    scope = _ref10[2];
     if ((nestedLocal && !utils.kwtest(pr(body["slice"](-1)[0])))) {
       rear = body.pop();
       if ((utils.isPrimitive(rear) || utils.isString(rear) || utils.isSpecialValue(rear) || utils.isSpecialValueStr(rear))) {
         body.push(collector + ".push(" + pr(rear) + ")");
       } else if (isIdentifier(rear)) {
-        _ref11 = compileGetLast(["?", rear], buffer, scope, opts, "parens");
-        tested = _ref11[0];
-        buffer = _ref11[1];
-        scope = _ref11[2];
+        _ref12 = compileGetLast(["?", rear], buffer, scope, opts, "parens");
+        tested = _ref12[0];
+        buffer = _ref12[1];
+        scope = _ref12[2];
         body.push("if (" + tested + ") " + collector + ".push(" + pr(rear) + ")");
       } else {
-        _ref10 = declareService("_ref", scope, (opts.function ? args : undefined));
-        subst = _ref10[0];
-        scope = _ref10[1];
+        _ref11 = declareService("_ref", scope, (opts.function ? args : undefined));
+        subst = _ref11[0];
+        scope = _ref11[1];
         body.push("if (typeof (" + subst + " = " + pr(rear) + ") !== 'undefined') " + collector + ".push(" + subst + ")");
       }
     }
@@ -1677,10 +1704,10 @@
   macros = {};
 
   function importMacros() {
-    var store, key, val, _i, _i0, _ref, _ref0;
+    var store, key, val, _i, _i0, _ref, _len, _ref0, _len0;
     var stores = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
     _ref = stores;
-    for (_i0 = 0; _i0 < _ref.length; ++_i0) {
+    for (_i0 = 0, _len = _ref.length; _i0 < _len; ++_i0) {
       store = _ref[_i0];
       _ref0 = store;
       for (key in _ref0) {
@@ -1694,7 +1721,7 @@
   importMacros(require("./macros"));
 
   function load(url) {
-    var req, require, cp, env, key, value, result, _ref, _ref0;
+    var req, require, cp, env, key, value, result, _ref, _len, _ref0;
 
     function list() {
       var _i;
@@ -1725,7 +1752,7 @@
       env.params = JSON.stringify({
         "url": url
       });
-      env.scriptSource = "var params, key, value, http, parsedURL, req, _ref;\nparams = {};\ntry {\n  params = JSON.parse(process.env.params);\n} catch (err) {\n  console.log(\"error\", err);\n}\n_ref = params;\nfor (key in _ref) {\n  value = _ref[key];\n  global[key] = value;\n}\nhttp = require(((url.indexOf(\"https\") < 0) ? \"http\" : \"https\"));\nparsedURL = require(\"url\").parse(url);\nreq = http.request(parsedURL, (function(res) {\n  return res.pipe(process.stdout);\n}));\nreq.end();";
+      env.scriptSource = "var params, key, value, http, parsedURL, req, _ref, _len;\nparams = {};\ntry {\n  params = JSON.parse(process.env.params);\n} catch (err) {\n  console.log(\"error\", err);\n}\n_ref = params;\nfor (key in _ref) {\n  value = _ref[key];\n  global[key] = value;\n}\nhttp = require(((url.indexOf(\"https\") < 0) ? \"http\" : \"https\"));\nparsedURL = require(\"url\").parse(url);\nreq = http.request(parsedURL, (function(res) {\n  return res.pipe(process.stdout);\n}));\nreq.end();";
       result = cp.spawnSync(process.execPath, list("-e", "require('vm').runInThisContext(process.env.scriptSource)"), {
         "env": env
       });
@@ -1743,7 +1770,7 @@
   });
 
   function parseMacros(form) {
-    var key, val, i, _ref, _ref0;
+    var key, val, i, _ref, _len, _ref0, _len0;
     if (utils.isHash(form)) {
       _ref = form;
       for (key in _ref) {
@@ -1757,7 +1784,7 @@
         form[0] = makeMacro(form[0]["slice"](1), true);
       } else {
         _ref0 = form;
-        for (i = 0; i < _ref0.length; ++i) {
+        for (i = 0, _len0 = _ref0.length; i < _len0; ++i) {
           val = _ref0[i];
           form[i] = parseMacros(val);
         }
@@ -1792,7 +1819,7 @@
   makeMacro;
 
   function expandMacros(form) {
-    var key, val, i, args, _ref, _ref0;
+    var key, val, i, args, _ref, _len, _ref0, _len0;
     if (utils.isHash(form)) {
       _ref = form;
       for (key in _ref) {
@@ -1808,7 +1835,7 @@
         if ((typeof form === "undefined")) form = [];
       } else {
         _ref0 = form;
-        for (i = 0; i < _ref0.length; ++i) {
+        for (i = 0, _len0 = _ref0.length; i < _len0; ++i) {
           val = _ref0[i];
           form[i] = expandMacros(val);
         }
@@ -1819,7 +1846,7 @@
   expandMacros;
 
   function macroexpand(form, uniq) {
-    var i, elem, key, val, _ref, _ref0;
+    var i, elem, key, val, _ref, _len, _ref0, _len0;
     if ((typeof uniq === 'undefined')) uniq = new Uniq(undefined);
     if (isAtom(form)) {
       if (isService(form)) form = uniq.checkAndReplace(form);
@@ -1830,7 +1857,7 @@
         form = macroexpand(expandMacros(form), new Uniq(uniq));
       } else {
         _ref = form;
-        for (i = 0; i < _ref.length; ++i) {
+        for (i = 0, _len = _ref.length; i < _len; ++i) {
           elem = _ref[i];
           form[i] = macroexpand(elem, uniq);
         }
@@ -1850,10 +1877,10 @@
   functions = {};
 
   function importFunctions() {
-    var store, key, val, _i, _i0, _ref, _ref0;
+    var store, key, val, _i, _i0, _ref, _len, _ref0, _len0;
     var stores = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
     _ref = stores;
-    for (_i0 = 0; _i0 < _ref.length; ++_i0) {
+    for (_i0 = 0, _len = _ref.length; _i0 < _len; ++_i0) {
       store = _ref[_i0];
       _ref0 = store;
       for (key in _ref0) {
@@ -1919,7 +1946,7 @@
   exports.compile = compile;
 
   function extend(base, hash) {
-    var result, key, value, _ref, _ref0;
+    var result, key, value, _ref, _len, _ref0, _len0;
     result = {};
     _ref = base;
     for (key in _ref) {

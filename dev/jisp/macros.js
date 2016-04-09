@@ -20,11 +20,11 @@
     return _ref;
   };
   var macConcatHash = function() {
-    var arg, _i, _i0, _res, _ref, _ref0;
+    var arg, _i, _i0, _res, _ref, _len, _ref0;
     var args = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
     _res = [];
     _ref = args;
-    for (_i0 = 0; _i0 < _ref.length; ++_i0) {
+    for (_i0 = 0, _len = _ref.length; _i0 < _len; ++_i0) {
       arg = _ref[_i0];
       if (typeof(_ref0 = ["spread", arg]) !== 'undefined') _res.push(_ref0);
     }
@@ -89,11 +89,11 @@
     return [].concat(args);
   }
   var macExist = function() {
-    var value, comp, elements, _i, _i0, _res, _ref, _ref0;
+    var value, comp, elements, _i, _i0, _res, _ref, _len, _ref0;
     var values = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
     _res = [];
     _ref = values;
-    for (_i0 = 0; _i0 < _ref.length; ++_i0) {
+    for (_i0 = 0, _len = _ref.length; _i0 < _len; ++_i0) {
       value = _ref[_i0];
       comp = compartmentaliseExist(value);
       if (typeof(_ref0 = ((comp.length > 1) ? [].concat(["and"]).concat(comp) : comp[0])) !== 'undefined') _res.push(_ref0);
@@ -102,11 +102,11 @@
     return ((elements.length > 1) ? [].concat(["or"]).concat(elements) : elements[0]);
   };
   var macNotExist = function() {
-    var value, comp, elements, _i, _i0, _res, _ref, _ref0;
+    var value, comp, elements, _i, _i0, _res, _ref, _len, _ref0;
     var values = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
     _res = [];
     _ref = values;
-    for (_i0 = 0; _i0 < _ref.length; ++_i0) {
+    for (_i0 = 0, _len = _ref.length; _i0 < _len; ++_i0) {
       value = _ref[_i0];
       comp = compartmentaliseNotExist(value);
       if (typeof(_ref0 = ((comp.length > 1) ? [].concat(["or"]).concat(comp) : comp[0])) !== 'undefined') _res.push(_ref0);
@@ -125,11 +125,11 @@
     return [].concat(["isnt", ["typeof", obj]]).concat(types);
   };
   var macAny = function() {
-    var value, elements, _i, _i0, _res, _ref, _ref0;
+    var value, elements, _i, _i0, _res, _ref, _len, _ref0;
     var values = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
     _res = [];
     _ref = values;
-    for (_i0 = 0; _i0 < _ref.length; ++_i0) {
+    for (_i0 = 0, _len = _ref.length; _i0 < _len; ++_i0) {
       value = _ref[_i0];
       if (typeof(_ref0 = ["and", ["?", value], value]) !== 'undefined') _res.push(_ref0);
     }
@@ -164,7 +164,7 @@
   exports.let = macLet;
 
   function compartmentaliseExist(form) {
-    var i, val, split, _ref, _res, _ref0, _ref1;
+    var i, val, split, _ref, _res, _ref0, _len, _ref1;
     if ((utils.isList(form) && (form[0] === "get"))) {
       _ref = list.apply(list, [].concat(compartmentaliseExist(form[1])).concat([
         ["isnta", form, "'undefined'"]
@@ -172,7 +172,7 @@
     } else if ((typeof form === "string") && utils.isIdentifier(form) && !utils.isSpecialValueStr(form)) {
       _res = [];
       _ref0 = (split = utils.splitName(form));
-      for (i = 0; i < _ref0.length; ++i) {
+      for (i = 0, _len = _ref0.length; i < _len; ++i) {
         val = _ref0[i];
         if (typeof(_ref1 = ["isnta", split.slice(0, i + 1)
             .join(""), "'undefined'"
@@ -190,7 +190,7 @@
   exports["?"] = macExist;
 
   function compartmentaliseNotExist(form) {
-    var i, val, split, _ref, _res, _ref0, _ref1;
+    var i, val, split, _ref, _res, _ref0, _len, _ref1;
     if ((utils.isList(form) && (form[0] === "get"))) {
       _ref = list.apply(list, [].concat(compartmentaliseNotExist(form[1])).concat([
         ["isa", form, "'undefined'"]
@@ -198,7 +198,7 @@
     } else if ((typeof form === "string") && utils.isIdentifier(form) && !utils.isSpecialValueStr(form)) {
       _res = [];
       _ref0 = (split = utils.splitName(form));
-      for (i = 0; i < _ref0.length; ++i) {
+      for (i = 0, _len = _ref0.length; i < _len; ++i) {
         val = _ref0[i];
         if (typeof(_ref1 = ["isa", split.slice(0, i + 1)
             .join(""), "'undefined'"

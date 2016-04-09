@@ -40,7 +40,7 @@
   optionParser = null;
 
   function run() {
-    var replCliOpts, literals, source, _i, _res, _ref, _ref0;
+    var replCliOpts, literals, source, _i, _res, _ref, _len, _ref0;
     parseOptions();
     replCliOpts = {
       useGlobal: true
@@ -53,7 +53,7 @@
     if (opts.output) opts.output = path.resolve(opts.output);
     _res = [];
     _ref = opts.arguments;
-    for (_i = 0; _i < _ref.length; ++_i) {
+    for (_i = 0, _len = _ref.length; _i < _len; ++_i) {
       source = _ref[_i];
       source = path.resolve(source);
       if (typeof(_ref0 = compilePath(source, true, source)) !== 'undefined') _res.push(_ref0);
@@ -63,7 +63,7 @@
   exports.run = run;
 
   function compilePath(source, topLevel, base) {
-    var stats, files, file, code, _i, _res, _ref, _ref0, _ref1, _ref2;
+    var stats, files, file, code, _i, _res, _ref, _len, _ref0, _ref1, _ref2;
     if ((([].indexOf.call(sources, source) >= 0) || (!topLevel && (notSources[source] || hidden(source))))) undefined;
     try {
       stats = fs.statSync(source);
@@ -89,7 +89,7 @@
         }
         _res = [];
         _ref = files;
-        for (_i = 0; _i < _ref.length; ++_i) {
+        for (_i = 0, _len = _ref.length; _i < _len; ++_i) {
           file = _ref[_i];
           if (typeof(_ref0 = compilePath(path.join(source, file), false, base)) !== 'undefined') _res.push(_ref0);
         }
@@ -118,9 +118,9 @@
   compilePath;
 
   function findDirectoryIndex(source) {
-    var ext, index, _i, _ref, _ref0;
+    var ext, index, _i, _ref, _len, _ref0;
     _ref = jisp.fileExtensions;
-    for (_i = 0; _i < _ref.length; ++_i) {
+    for (_i = 0, _len = _ref.length; _i < _len; ++_i) {
       ext = _ref[_i];
       index = path.join(source, "index" + ext);
       try {

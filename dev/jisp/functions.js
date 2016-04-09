@@ -1,10 +1,10 @@
 (function() {
   function concat() {
-    var _res, lst, _i, _i0, _ref;
+    var _res, lst, _i, _i0, _ref, _len;
     var lists = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
     _res = [];
     _ref = lists;
-    for (_i0 = 0; _i0 < _ref.length; ++_i0) {
+    for (_i0 = 0, _len = _ref.length; _i0 < _len; ++_i0) {
       lst = _ref[_i0];
       _res = _res.concat(lst);
     }
@@ -21,7 +21,7 @@
 
   function log(obj) {
     return (function(result) {
-      var key, value, _ref;
+      var key, value, _ref, _len;
       _ref = obj;
       for (key in _ref) {
         value = _ref[key];
