@@ -1466,7 +1466,7 @@
         "url": url
       });
       env.scriptSource = "var params, key, value, http, parsedURL, req, _ref, _len;\nparams = {};\ntry {\n  params = JSON.parse(process.env.params);\n} catch (err) {\n  console.log(\"error\", err);\n}\n_ref = params;\nfor (key in _ref) {\n  value = _ref[key];\n  global[key] = value;\n}\nhttp = require(((url.indexOf(\"https\") < 0) ? \"http\" : \"https\"));\nparsedURL = require(\"url\").parse(url);\nreq = http.request(parsedURL, (function(res) {\n  return res.pipe(process.stdout);\n}));\nreq.end();";
-      result = cp.spawnSync(process.execPath, list("-e", "require('vm').runInThisContext(process.env.scriptSource)"), {
+      result = cp.spawnSync(process.execPath, ["-e", "require('vm').runInThisContext(process.env.scriptSource)"], {
         "env": env
       });
       result = (result.stdout.length ? result.stdout : result.stderr);
@@ -3052,7 +3052,7 @@
     return Array(buffer, scope);
   });
   specials.list = (function(form, scope, opts, nested) {
-    var buffer, formName, nestedLocal, item, _i, _res, _ref, _len, _ref0, _i0;
+    var buffer, formName, nestedLocal, item, _i, _res, _ref, _len, _ref0, _i0, _ref1;
     if ((typeof opts === 'undefined')) opts = {};
     buffer = [];
     form = form.slice();
@@ -3063,11 +3063,16 @@
     _ref = form;
     for (_i = 0, _len = _ref.length; _i < _len; ++_i) {
       item = _ref[_i];
-      _ref0 = compileGetLast(item, buffer, scope, opts, nested);
-      item = _ref0[0];
-      buffer = _ref0[1];
-      scope = _ref0[2];
-      if (typeof item !== 'undefined') _res.push(item);
+      if (isList(item)) {
+        _ref0 = compileGetLast(item, buffer, scope, opts, nested);
+        item = _ref0[0];
+        buffer = _ref0[1];
+        scope = _ref0[2];
+        _ref1 = item;
+      } else {
+        _ref1 = pr(item);
+      }
+      if (typeof _ref1 !== 'undefined') _res.push(_ref1);
     }
     buffer.push("[" + _res
       .join(", ") + "]");

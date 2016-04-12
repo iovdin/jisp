@@ -959,9 +959,9 @@
                 (+ "[" 
                    (do
                      (for item form
-                          (do
-                            (macCompileGetLast item item)
-                            item))
+                          (if (isList item)
+                            (do (macCompileGetLast item item) item)
+                            (pr item)))
                      (.join ", "))
                    "]"))))))
 
