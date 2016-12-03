@@ -1953,6 +1953,7 @@
       functionsRedeclare = [];
       functionsRedefine = [];
     }
+    macros._uniq = 0;
     _ref = compileForm(macroexpand(parseMacros(parsed)), {
       hoist: [],
       service: [],

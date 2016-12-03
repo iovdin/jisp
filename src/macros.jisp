@@ -194,3 +194,15 @@
 
 (= exports["vcs-commit"] vcsCommit)
 
+(mac vcsCommit ...rest
+     `(do
+        ,...(if (isa rest[0] "string")
+             (rest.slice 1)
+             rest)))
+(mac macUniq
+     (do
+       (= this._uniq (+ 1 (or this._uniq 0)))
+       this._uniq))
+
+(= exports["getUniq"] macUniq)
+

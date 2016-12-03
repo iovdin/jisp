@@ -1169,6 +1169,7 @@
 (= exports.macros macros)        ; expose macros object for override by user
 (= exports.functions functions)  ; expose functions object for override by user
 
+
 (= exports.compile (def compile src opts (do
    (= defaults (wrap:       yes
                 topScope:   yes   ; for built-in-func overrides
@@ -1182,6 +1183,9 @@
    (if (not opts.repl)
        (= functionsRedeclare `()
           functionsRedefine  `()))  ; reset functions override stores when compiling each new file
+
+
+   (= macros._uniq 0)
    (= (compiled scope) (compileForm (macroexpand (parseMacros parsed)) (hoist:`() service:`() replace:(:)) opts))
    (if (and opts.pretty (? beautify))
        (beautify (render compiled) (indent_size: 2))

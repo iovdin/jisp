@@ -1221,6 +1221,10 @@
     var rest = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
     return [].concat(["do"]).concat(((typeof rest[0] === "string") ? rest.slice(1) : rest));
   };
+  var macUniq = function() {
+    this._uniq = 1 + (this._uniq || 0);
+    return this._uniq;
+  };
   var utils;
   utils = require("./utils");
   exports[":"] = macHash;
@@ -1285,7 +1289,8 @@
   exports.any = macAny;
   exports["e.g."] = maceg;
   exports["vcs-checkout"] = vcsCheckout;
-  return exports["vcs-commit"] = vcsCommit;
+  exports["vcs-commit"] = vcsCommit;
+  return exports["getUniq"] = macUniq;
 })['call'](this);
       return module.exports;
     })();require['./uniq'] = (function() {
@@ -3309,6 +3314,7 @@
       functionsRedeclare = [];
       functionsRedefine = [];
     }
+    macros._uniq = 0;
     _ref = compileForm(macroexpand(parseMacros(parsed)), {
       hoist: [],
       service: [],
