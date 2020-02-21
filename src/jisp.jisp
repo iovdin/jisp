@@ -984,7 +984,6 @@
 (mac execSync env ...body
      (do
        (= 
-         module process.mainModule
          newBody `(
                    (= params (:))
                    (try (= params (JSON.parse process.env.params)) 
@@ -1196,19 +1195,20 @@
                                               (beautify (render compiled) (indent_size: 2))
                                               (render compiled)))))
 
-(def extend base hash
-     (do
-       (= result (:))
-       (over value key base
-             (= result[key] value))
-       (over value key hash
-             (= result[key] value))
-       result))
+(def extend ...objects 
+ (let result (:) 
+   (do (for object objects 
+         (over value key object 
+           (if (? value) 
+              (= result[key] value)))) 
+     result)))
 
 (= exports.eval 
    (def jispEval src
         (if (and (? vm) (? vm.runInNewContext))
-          (vm.runInNewContext src (extend global exports))
+          (vm.runInNewContext src 
+            (extend global exports 
+              (: __dirname __dirname console console require require)))
           (eval src))))
 
 ; Copied (more or less) from CoffeeScript source
