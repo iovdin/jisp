@@ -34,17 +34,17 @@
                   "browser"))
 
 (def buildFile compiler filename srcDir destDir (do
-     (= srcPath   (+ srcDir filename ".jisp")
-        destPath  (+ destDir filename ".js")
-        src       (fs.readFileSync srcPath "utf8"))
-     (prn (+ "-- compiling " filename "..."))
-     (= js (compiler.compile src))
-     (fs.writeFileSync destPath js "utf8")))
+                                                 (= srcPath   (+ srcDir filename ".jisp")
+                                                    destPath  (+ destDir filename ".js")
+                                                    src       (fs.readFileSync srcPath "utf8"))
+                                                 (prn (+ "-- compiling " filename "..."))
+                                                 (= js (compiler.compile src))
+                                                 (fs.writeFileSync destPath js "utf8")))
 
 (def build jisp srcDir destDir (do
-     (prn "-- building...")
-     (for filename files (buildFile jisp filename srcDir destDir))
-     (prn "-- if you're reading this, compilation has succeeded!")))
+                                (prn "-- building...")
+                                (for filename files (buildFile jisp filename srcDir destDir))
+                                (prn "-- if you're reading this, compilation has succeeded!")))
 
 (if args.r
   (do
@@ -56,11 +56,11 @@
     (build jisp "./src/" "./dev/jisp/"))
   (elif args.s (do
     ; Load compiler
-    (prn "-- trying to load unstable compiler...")
-    (= jisp_unstable (require "./dev/jisp/jisp"))
+                (prn "-- trying to load unstable compiler...")
+                (= jisp_unstable (require "./dev/jisp/jisp"))
     ; Build with unstable
-    (prn "-- trying to build lib with unstable compiler...")
-    (build jisp_unstable "./src/" "./lib/jisp/")))
+                (prn "-- trying to build lib with unstable compiler...")
+                (build jisp_unstable "./src/" "./lib/jisp/")))
   (do
     ; Load compiler
     (prn "-- trying to load unstable compiler...")
@@ -77,14 +77,14 @@
 
 (for name filesBrowser
   (+= code (+
-    "require['./" name "'] = (function() {
+            "require['./" name "'] = (function() {
       var exports = {}, module = {exports: exports};
       " (fs.readFileSync (+ "./dev/jisp/" name ".js")) "
       return module.exports;
     })();")))
 
 (= code (+
-  "(function(root) {
+         "(function(root) {
     var jisp = function() {
       function require(path) { return require[path]; }
       " code "
