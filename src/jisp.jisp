@@ -965,6 +965,21 @@
                      (.join ", "))
                    "]"))))))
 
+; (with scope statement1 returnValue)
+
+(= specials.with 
+   (macCompileSpecial 
+     (code: (do (= (self ...body) form)
+              (macCompileGetLast self self "parens")
+              (= body (Array "do" ...body))
+              (macCompileResolve body body)
+              (if nestedLocal 
+                (do (macDeclareService collector "_ref")
+                    (body.push (+ collector " = " (pr (body.pop))))))
+              ;(= nested nestedLocal)
+              (buffer.push (+ "with (" (pr self) ") { " (render body) " }")) 
+              (if nestedLocal
+                 (buffer.push collector))))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Macros ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; Macro store
