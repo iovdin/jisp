@@ -1381,9 +1381,8 @@
     return _res;
   }
   var execSync = function(env) {
-    var module, newBody, src, _i;
+    var newBody, src, _i;
     var body = 2 <= arguments.length ? [].slice.call(arguments, 1, _i = arguments.length - 0) : (_i = 1, []);
-    module = process.mainModule;
     newBody = [].concat([
       ["=", "params", {}],
       ["try", ["=", "params", ["JSON.parse", "process.env.params"]],
@@ -3083,6 +3082,36 @@
       .join(", ") + "]");
     return Array(buffer, scope);
   });
+  specials.with = (function(form, scope, opts, nested) {
+    var buffer, formName, nestedLocal, self, body, collector, _ref, _i, _ref0, _i0, _ref1, _i1, _ref2, _i2;
+    if ((typeof opts === 'undefined')) opts = {};
+    buffer = [];
+    form = form.slice();
+    formName = form.shift();
+    nestedLocal = ((typeof nested !== 'undefined') ? nested : true);
+    nested = undefined;
+    _ref = form;
+    self = _ref[0];
+    var body = 2 <= _ref.length ? [].slice.call(_ref, 1, _i = _ref.length - 0) : (_i = 1, []);
+    _ref0 = compileGetLast(self, buffer, scope, opts, "parens");
+    self = _ref0[0];
+    buffer = _ref0[1];
+    scope = _ref0[2];
+    body = Array.apply(Array, [].concat(["do"]).concat(body));
+    _ref1 = compileResolve(body, buffer, scope, opts, nested);
+    body = _ref1[0];
+    buffer = _ref1[1];
+    scope = _ref1[2];
+    if (nestedLocal) {
+      _ref2 = declareService("_ref", scope, (opts.function ? args : undefined));
+      collector = _ref2[0];
+      scope = _ref2[1];
+      body.push(collector + " = " + pr(body.pop()));
+    }
+    buffer.push("with (" + pr(self) + ") { " + render(body) + " }");
+    if (nestedLocal) buffer.push(collector);
+    return Array(buffer, scope);
+  });
   macros = {};
 
   function importMacros() {
@@ -3104,6 +3133,8 @@
 
   function load(url) {
     var req, require, cp, env, key, value, result, _ref, _len, _ref0;
+    load.cache = load.cache || {}
+    if (load.cache[url]) return load.cache[url];
 
     function list() {
       var _i;
@@ -3139,7 +3170,9 @@
         "env": env
       });
       result = (result.stdout.length ? result.stdout : result.stderr);
-      _ref0 = result.toString('utf-8');
+      result = result.toString('utf-8');
+      load.cache[url] = result;
+      _ref0 = result;
     }
     return _ref0;
   }
@@ -3328,25 +3361,31 @@
   }
   exports.compile = compile;
 
-  function extend(base, hash) {
-    var result, key, value, _ref, _len, _ref0, _len0;
-    result = {};
-    _ref = base;
-    for (key in _ref) {
-      value = _ref[key];
-      result[key] = value;
-    }
-    _ref0 = hash;
-    for (key in _ref0) {
-      value = _ref0[key];
-      result[key] = value;
-    }
-    return result;
+  function extend() {
+    var _i;
+    var objects = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
+    return (function(result) {
+      var object, key, value, _i0, _ref, _len, _ref0, _len0;
+      _ref = objects;
+      for (_i0 = 0, _len = _ref.length; _i0 < _len; ++_i0) {
+        object = _ref[_i0];
+        _ref0 = object;
+        for (key in _ref0) {
+          value = _ref0[key];
+          if ((typeof value !== 'undefined')) result[key] = value;
+        }
+      }
+      return result;
+    })({});
   }
   extend;
 
   function jispEval(src) {
-    return (((typeof vm !== 'undefined') && ((typeof vm !== 'undefined') && (typeof vm.runInNewContext !== 'undefined'))) ? vm.runInNewContext(src, extend(global, exports)) : eval(src));
+    return (((typeof vm !== 'undefined') && ((typeof vm !== 'undefined') && (typeof vm.runInNewContext !== 'undefined'))) ? vm.runInNewContext(src, extend(global, exports, {
+      __dirname: __dirname,
+      console: console,
+      require: require
+    })) : eval(src));
   }
   exports.eval = jispEval;
 
