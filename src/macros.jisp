@@ -200,9 +200,13 @@
              (rest.slice 1)
              rest)))
 (mac macUniq
-     (do
-       (= this._uniq (+ 1 (or this._uniq 0)))
-       this._uniq))
+  (+ "g" 
+    (do (require "crypto")
+      (.randomBytes 20)
+      (.toString "base64")
+      (.replace /\W/g "")
+      (.substr 0 6))))
 
-(= exports["getUniq"] macUniq)
+(= exports["getUniq"] macUniq
+  exports["gensym"] macUniq)
 
