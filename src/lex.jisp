@@ -37,15 +37,15 @@
 
 (def maketest condition
      (if (is (typeof condition) "function")
-         (fn tokens (condition (car tokens)))
+         (fn tokens index (condition (get tokens (or index 0))))
          (elif (isRegex condition)
-               (fn tokens (condition.test (car tokens))))
+               (fn tokens index (condition.test (get tokens (or index 0)))))
          (elif (isAtom condition)
-               (fn tokens (is (car tokens) condition)))
+               (fn tokens index (is (get tokens (or index 0)) condition)))
          (elif (isList condition)  ; assume list of tests
-               (fn tokens
+               (fn tokens index
                    (if (for cond i condition
-                            (if (not ((maketest cond) (tokens.slice i)))
+                            (if (not ((maketest cond) tokens (+ (or index 0) i)))
                                 (return false)))
                        true)))
          (throw (Error (+ "can't test against " (pr condition))))))

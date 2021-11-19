@@ -850,25 +850,25 @@
   function maketest(condition) {
     var _ref;
     if ((typeof condition === "function")) {
-      _ref = (function(tokens) {
-        return condition(tokens[0]);
+      _ref = (function(tokens, index) {
+        return condition(tokens[index || 0]);
       });
     } else if (isRegex(condition)) {
-      _ref = (function(tokens) {
-        return condition.test(tokens[0]);
+      _ref = (function(tokens, index) {
+        return condition.test(tokens[index || 0]);
       });
     } else if (isAtom(condition)) {
-      _ref = (function(tokens) {
-        return (tokens[0] === condition);
+      _ref = (function(tokens, index) {
+        return (tokens[(index || 0)] === condition);
       });
     } else if (isList(condition)) {
-      _ref = (function(tokens) {
+      _ref = (function(tokens, index) {
         var i, cond, _res, _ref0, _len, _ref1;
         _res = [];
         _ref0 = condition;
         for (i = 0, _len = _ref0.length; i < _len; ++i) {
           cond = _ref0[i];
-          if (!maketest(cond)(tokens.slice(i))) {
+          if (!maketest(cond)(tokens, (index || 0) + i)) {
             return _ref1 = false;
           } else {
             _ref1 = undefined;
@@ -1222,8 +1222,11 @@
     return [].concat(["do"]).concat(((typeof rest[0] === "string") ? rest.slice(1) : rest));
   };
   var macUniq = function() {
-    this._uniq = 1 + (this._uniq || 0);
-    return this._uniq;
+    return ("g" + require("crypto")
+      .randomBytes(20)
+      .toString("base64")
+      .replace(/\W/g, "")
+      .substr(0, 6));
   };
   var utils;
   utils = require("./utils");
@@ -1290,7 +1293,8 @@
   exports["e.g."] = maceg;
   exports["vcs-checkout"] = vcsCheckout;
   exports["vcs-commit"] = vcsCommit;
-  return exports["getUniq"] = macUniq;
+  exports["getUniq"] = macUniq;
+  return exports["gensym"] = macUniq;
 })['call'](this);
       return module.exports;
     })();require['./uniq'] = (function() {
@@ -1439,6 +1443,10 @@
 
   function load(url) {
     var req, require, cp, env, key, value, result, _ref, _len, _ref0;
+    if (loadCache[url]) {
+      console.log("load", url, "cached", !!loadCache[url]);
+      return loadCache[url];
+    }
 
     function list() {
       var _i;
@@ -1474,7 +1482,9 @@
         "env": env
       });
       result = (result.stdout.length ? result.stdout : result.stderr);
-      _ref0 = result.toString('utf-8');
+      result = result.toString('utf-8');
+      loadCache[url] = result;
+      _ref0 = result;
     }
     return _ref0;
   }
@@ -3130,11 +3140,14 @@
   }
   exports.importMacros = importMacros;
   importMacros(require("./macros"));
+  global.loadCache = global.loadCache || {}
 
   function load(url) {
     var req, require, cp, env, key, value, result, _ref, _len, _ref0;
-    load.cache = load.cache || {}
-    if (load.cache[url]) return load.cache[url];
+    if (loadCache[url]) {
+      console.log("load", url, "cached", !!loadCache[url]);
+      return loadCache[url];
+    }
 
     function list() {
       var _i;
@@ -3171,7 +3184,7 @@
       });
       result = (result.stdout.length ? result.stdout : result.stderr);
       result = result.toString('utf-8');
-      load.cache[url] = result;
+      loadCache[url] = result;
       _ref0 = result;
     }
     return _ref0;

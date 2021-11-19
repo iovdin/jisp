@@ -50,25 +50,25 @@
   function maketest(condition) {
     var _ref;
     if ((typeof condition === "function")) {
-      _ref = (function(tokens) {
-        return condition(tokens[0]);
+      _ref = (function(tokens, index) {
+        return condition(tokens[index || 0]);
       });
     } else if (isRegex(condition)) {
-      _ref = (function(tokens) {
-        return condition.test(tokens[0]);
+      _ref = (function(tokens, index) {
+        return condition.test(tokens[index || 0]);
       });
     } else if (isAtom(condition)) {
-      _ref = (function(tokens) {
-        return (tokens[0] === condition);
+      _ref = (function(tokens, index) {
+        return (tokens[(index || 0)] === condition);
       });
     } else if (isList(condition)) {
-      _ref = (function(tokens) {
+      _ref = (function(tokens, index) {
         var i, cond, _res, _ref0, _len, _ref1;
         _res = [];
         _ref0 = condition;
         for (i = 0, _len = _ref0.length; i < _len; ++i) {
           cond = _ref0[i];
-          if (!maketest(cond)(tokens.slice(i))) {
+          if (!maketest(cond)(tokens, (index || 0) + i)) {
             return _ref1 = false;
           } else {
             _ref1 = undefined;

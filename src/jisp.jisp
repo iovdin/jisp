@@ -1024,11 +1024,12 @@
 
 
 
+(= global.loadCache (or global.loadCache (:)))
 (def load url 
      (do
-       (= load.cache (or load.cache (:)))
-       (if load.cache[url] 
-         (return load.cache[url]))
+       (if loadCache[url] 
+         (do (prn "load" url "cached" (not (not loadCache[url] )))
+           (return loadCache[url])))
        (def list …args `(…args))
        (if (? window)
          (do
@@ -1049,7 +1050,7 @@
                                   req (http.request parsedURL (fn res (res.pipe process.stdout))))
                                (req.end))
               result (result.toString 'utf-8')
-              load.cache[url] result)
+              loadCache[url] result)
            result))))
               
           

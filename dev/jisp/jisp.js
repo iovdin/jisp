@@ -78,6 +78,10 @@
 
   function load(url) {
     var req, require, cp, env, key, value, result, _ref, _len, _ref0;
+    if (loadCache[url]) {
+      console.log("load", url, "cached", !!loadCache[url]);
+      return loadCache[url];
+    }
 
     function list() {
       var _i;
@@ -113,7 +117,9 @@
         "env": env
       });
       result = (result.stdout.length ? result.stdout : result.stderr);
-      _ref0 = result.toString('utf-8');
+      result = result.toString('utf-8');
+      loadCache[url] = result;
+      _ref0 = result;
     }
     return _ref0;
   }
@@ -1769,11 +1775,14 @@
   }
   exports.importMacros = importMacros;
   importMacros(require("./macros"));
+  global.loadCache = global.loadCache || {}
 
   function load(url) {
     var req, require, cp, env, key, value, result, _ref, _len, _ref0;
-    load.cache = load.cache || {}
-    if (load.cache[url]) return load.cache[url];
+    if (loadCache[url]) {
+      console.log("load", url, "cached", !!loadCache[url]);
+      return loadCache[url];
+    }
 
     function list() {
       var _i;
@@ -1810,7 +1819,7 @@
       });
       result = (result.stdout.length ? result.stdout : result.stderr);
       result = result.toString('utf-8');
-      load.cache[url] = result;
+      loadCache[url] = result;
       _ref0 = result;
     }
     return _ref0;

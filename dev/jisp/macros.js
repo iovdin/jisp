@@ -146,8 +146,11 @@
     return [].concat(["do"]).concat(((typeof rest[0] === "string") ? rest.slice(1) : rest));
   };
   var macUniq = function() {
-    this._uniq = 1 + (this._uniq || 0);
-    return this._uniq;
+    return ("g" + require("crypto")
+      .randomBytes(20)
+      .toString("base64")
+      .replace(/\W/g, "")
+      .substr(0, 6));
   };
   var utils;
   utils = require("./utils");
@@ -214,5 +217,6 @@
   exports["e.g."] = maceg;
   exports["vcs-checkout"] = vcsCheckout;
   exports["vcs-commit"] = vcsCommit;
-  return exports["getUniq"] = macUniq;
+  exports["getUniq"] = macUniq;
+  return exports["gensym"] = macUniq;
 })['call'](this);
