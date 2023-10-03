@@ -1,5 +1,5 @@
 ; Version
-(= exports.version "0.3.4")
+(= exports.version "0.3.5")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Dependencies ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1010,7 +1010,8 @@
        (= src (JSON.stringify (compile newBody (topScope: no wrap: no))))
        `(do
           (= cp (require "child_process")
-             env (:))
+             env (:)
+             process (require "process"))
           (over value key process.env
                 (= env[key] value))
           (= env.params (JSON.stringify ,env)
@@ -1038,11 +1039,11 @@
            (req.send)
            req.responseText)
          (do
-           (= require (any require process.mainModule.require))
            (if (is (url.indexOf "http") -1)
              (do
                (= fs (require "fs"))
                (return (fs.readFileSync url (: encoding "utf-8")))))
+           (= process (require "process"))
            (= result (execSync (: "url" url)
                                (= http (require (if (< (url.indexOf "https") 0) 
                                                   "http" "https"))

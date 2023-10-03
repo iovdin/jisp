@@ -1398,7 +1398,7 @@
       topScope: false,
       wrap: false
     }));
-    return ["do", ["=", "cp", ["require", "\"child_process\""], "env", {}],
+    return ["do", ["=", "cp", ["require", "\"child_process\""], "env", {}, "process", ["require", "\"process\""]],
       ["over", "value", "key", "process.env", ["=", "env[key]", "value"]],
       ["=", "env.params", ["JSON.stringify", env], "env.scriptSource", src],
       ["=", "result", ["cp.spawnSync", "process.execPath", ["list", "\"-e\"", "\"require('vm').runInThisContext(process.env.scriptSource)\""],
@@ -3143,7 +3143,7 @@
   global.loadCache = global.loadCache || {}
 
   function load(url) {
-    var req, require, cp, env, key, value, result, _ref, _len, _ref0;
+    var req, process, cp, env, key, value, result, _ref, _len, _ref0;
     if (loadCache[url]) {
       console.log("load", url, "cached", !!loadCache[url]);
       return loadCache[url];
@@ -3161,15 +3161,16 @@
       req.send();
       _ref0 = req.responseText;
     } else {
-      require = ((typeof require !== 'undefined') && require) || (((typeof process !== 'undefined') && (typeof process.mainModule !== 'undefined') && (typeof process.mainModule.require !== 'undefined')) && process.mainModule.require);
       if ((url.indexOf("http") === -1)) {
         fs = require("fs");
         return fs.readFileSync(url, {
           encoding: "utf-8"
         });
       }
+      process = require("process");
       cp = require("child_process");
       env = {};
+      process = require("process");
       _ref = process.env;
       for (key in _ref) {
         value = _ref[key];
