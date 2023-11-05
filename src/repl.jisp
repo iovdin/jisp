@@ -68,5 +68,5 @@
 (= exports.start (= start (fn
    (do (= repl (nodeREPL.start replDefaults))
        (repl.on "exit" (fn (repl.outputStream.write "\n")))
-       (enableMultiline repl)
+       ;(enableMultiline repl)
        repl))))
