@@ -1441,55 +1441,8 @@
     return [].concat(["do"]).concat(_res);
   };
 
-  function load(url) {
-    var req, require, cp, env, key, value, result, _ref, _len, _ref0;
-    if (loadCache[url]) {
-      console.log("load", url, "cached", !!loadCache[url]);
-      return loadCache[url];
-    }
-
-    function list() {
-      var _i;
-      var args = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
-      return [].concat(args);
-    }
-    list;
-    if ((typeof window !== 'undefined')) {
-      req = new window.XMLHttpRequest();
-      req.open("GET", url, false);
-      req.send();
-      _ref0 = req.responseText;
-    } else {
-      require = ((typeof require !== 'undefined') && require) || (((typeof process !== 'undefined') && (typeof process.mainModule !== 'undefined') && (typeof process.mainModule.require !== 'undefined')) && process.mainModule.require);
-      if ((url.indexOf("http") === -1)) {
-        fs = require("fs");
-        return fs.readFileSync(url, {
-          encoding: "utf-8"
-        });
-      }
-      cp = require("child_process");
-      env = {};
-      _ref = process.env;
-      for (key in _ref) {
-        value = _ref[key];
-        env[key] = value;
-      }
-      env.params = JSON.stringify({
-        "url": url
-      });
-      env.scriptSource = "var params, key, value, http, parsedURL, req, _ref, _len;\nparams = {};\ntry {\n  params = JSON.parse(process.env.params);\n} catch (err) {\n  console.log(\"error\", err);\n}\n_ref = params;\nfor (key in _ref) {\n  value = _ref[key];\n  global[key] = value;\n}\nhttp = require(((url.indexOf(\"https\") < 0) ? \"http\" : \"https\"));\nparsedURL = require(\"url\").parse(url);\nreq = http.request(parsedURL, (function(res) {\n  return res.pipe(process.stdout);\n}));\nreq.end();";
-      result = cp.spawnSync(process.execPath, ["-e", "require('vm').runInThisContext(process.env.scriptSource)"], {
-        "env": env
-      });
-      result = (result.stdout.length ? result.stdout : result.stderr);
-      result = result.toString('utf-8');
-      loadCache[url] = result;
-      _ref0 = result;
-    }
-    return _ref0;
-  }
   var vm, fs, path, beautify, utils, ops, operators, opFuncs, tokenise, lex, parse, Uniq, pr, spr, render, isAtom, isHash, isList, isVarName, isIdentifier, isService, getServicePart, assertExp, plusname, functionsRedeclare, functionsRedefine, specials, macros, functions;
-  exports.version = "0.3.4";
+  exports.version = "0.3.15";
   vm = require("vm");
   fs = require("fs");
   path = require("path");
@@ -3429,6 +3382,7 @@
   }
   return exports.run = run;
 })['call'](this);
+
       return module.exports;
     })();require['./browser'] = (function() {
       var exports = {}, module = {exports: exports};

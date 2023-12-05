@@ -176,29 +176,6 @@
 
 (= exports.any macAny)
 
-(mac maceg ...values
-     `())
-
-(= exports["e.g."] maceg)
-
-(mac vcsCheckout ...names
- `(do ,...names))
-
-(= exports["vcs-checkout"] vcsCheckout)
-
-(mac vcsCommit ...rest
-     `(do
-        ,...(if (isa rest[0] "string")
-             (rest.slice 1)
-             rest)))
-
-(= exports["vcs-commit"] vcsCommit)
-
-(mac vcsCommit ...rest
-     `(do
-        ,...(if (isa rest[0] "string")
-             (rest.slice 1)
-             rest)))
 (mac macUniq
   (+ "g" 
     (do (require "crypto")

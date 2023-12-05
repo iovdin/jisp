@@ -1,5 +1,5 @@
 ; Version
-(= exports.version "0.3.5")
+(= exports.version "0.3.15")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Dependencies ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -70,27 +70,30 @@
   (and (isList form) (is (car form) "spread")))
 
 ; Compiles form, resolves naming conflicts, returns compiled, buffer, and modified scope
-(def compileResolve form buffer scope opts nested (do
-  ; Compile new form and modify scope
-                                                   (= (compiled scope) (compileForm form scope opts nested))
-  ; Check if newly hoisted vars overlap service vars in scope + buffer and rename accordingly
-                                                   (over name i scope.service
-                                                     (if (in name scope.hoist) (do
-                                                                                (= newname name)
-                                                                                (while (in newname scope.hoist)
-                                                                                  (= newname (plusname newname)))
-                                                                                (= scope.service[i] newname
-                                                                                   re (RegExp (+ "(?=(?:[^$#_A-Za-z0-9]{1}|^)" name "(?:[^$#_A-Za-z0-9]{1}|$))([^$#_A-Za-z0-9]|^)" name) "g")  ; matches old name; probably also inside strings and regexes, todo check and fix
-                                                                                   subst (+ "$1" newname))
-                                                                                (for str i buffer
-                                                                                     (if (and (? str) (is (typeof str) "string")) (= buffer[i] (str.replace re subst)))))))
-                                                   `(compiled buffer scope)))
+(def compileResolve form buffer scope opts nested 
+  (do
+    ; Compile new form and modify scope
+    (= (compiled scope) (compileForm form scope opts nested))
+    ; Check if newly hoisted vars overlap service vars in scope + buffer and rename accordingly
+    (over name i scope.service
+      (if (in name scope.hoist) 
+        (do
+          (= newname name)
+          (while (in newname scope.hoist)
+            (= newname (plusname newname)))
+          (= scope.service[i] newname
+            re (RegExp (+ "(?=(?:[^$#_A-Za-z0-9]{1}|^)" name "(?:[^$#_A-Za-z0-9]{1}|$))([^$#_A-Za-z0-9]|^)" name) "g")  ; matches old name; probably also inside strings and regexes, todo check and fix
+            subst (+ "$1" newname))
+          (for str i buffer
+            (if (and (? str) (is (typeof str) "string")) (= buffer[i] (str.replace re subst)))))))
+    `(compiled buffer scope)))
 
 ; Compiles form and adds result to passed buffer and scope
-(def compileAdd form buffer scope opts nested (do
-                                               (= (compiled buffer scope) (compileResolve form buffer scope opts nested))
-                                               (buffer.push ...compiled)
-                                               `(buffer scope)))
+(def compileAdd form buffer scope opts nested 
+  (do
+    (= (compiled buffer scope) (compileResolve form buffer scope opts nested))
+    (buffer.push ...compiled)
+    `(buffer scope)))
 
 ; Compiles given form, modifying buffer and scope, and splits off last expression
 (def compileGetLast form buffer scope opts nested
@@ -175,86 +178,90 @@
           scope      (JSON.parse (JSON.stringify outerScope)))
        (delete opts.topScope)))
 
-(mac macDeclareOrHoist (dest "buffer") (do
-; Declare vars and funcs or hoist funcs as appropriate
-                                        `(do
-                                          (= vars  ``()
-                                             funcs ``()
-                                             dec   "var ")
-                                          ; Deal with new names: declare, drop, or bubble up if funcs
-                                          (if (?! args) (= args ``()))
-                                          (for name scope.hoist
-                                            (if (and (not (in name outerScope.hoist))
-                                                     (not (in name args)))
-                                              (if (in name (Object.keys functions))
-                                                (if (and opts.topScope (in name functionsRedeclare))
-                                                    (vars.push name)
-                                                  (if (notRedefined name)
-                                                    (funcs.push name)))
-                                                (elif (or (in name (Object.keys opFuncs))
-                                                          (in name (Object.keys macros)))
-                                                  (funcs.push name))
-                                                (if (not (is name "this"))
-                                                    (vars.push name)))))
-                                          (for name scope.service
-                                            (if (not (in name outerScope.service))
-                                              (vars.push name)))
-                                          ; Declare vars
-                                          (while (> vars.length 0) (do
-                                                                    (= name (vars.shift))
-                                                                    (if (in name vars)
-                                                                        (throw (Error (+ "compiler error: duplicate var in declarations:" name))))  ; no pr, expecting string
-                                                                    (+= dec (+ name ", "))))
-                                          (if (> dec.length 4)
-                                              (do (= dec (dec.slice 0 (- dec.length 2)))
-                                                  (do ,dest (.unshift dec))))
-                                          ; Declare funcs if functions, otherwise bubble all the way up
-                                          (if (and (? isTopLevel) isTopLevel)
-                                            (while (> funcs.length 0) (do
-                                                                       (= func (funcs.pop))
-                                                                       (if (in func funcs)
-                                                                         (throw (Error (+ "compiler error: duplicate func in declarations:" func))))  ; no pr, expecting string
-                                                                       (if (in func (Object.keys functions))
-                                                                         ; embed only if not redeclared or redefined
-                                                                         (if (notRedefined func)
-                                                                             (if (and (? functions[func].name) (isnt functions[func].name ""))
-                                                                                 ; embed like named function
-                                                                                 (do ,dest (.unshift (functions[func].toString)))
-                                                                                 ; embed like lambda
-                                                                                 (if (isVarName func)
-                                                                                     (do ,dest (.unshift (+ "var " func " = " (functions[func].toString) ";"))))))
-                                                                         (elif (and (in func (Object.keys macros)) (isVarName func))
-                                                                           (do ,dest (.unshift (+ "var " func " = " (macros[func].toString) ";"))))
-                                                                           ; ToDo embedding of opFuncs with .toString and renaming of references in code when not first in list
-                                                                         (elif (and (in func (Object.keys opFuncs)) (isVarName func))
-                                                                           (do ,dest (.unshift (+ "var " opFuncs[func].name " = " (opFuncs[func].func.toString) ";"))))  ; no pr, expecting strings
-                                                                         (throw (Error (+ "unrecognised func: " (pr func)))))))
-                                            (for func funcs
-                                              (if (not (in func outerScope.hoist))
-                                                (outerScope.hoist.push func))))
-                                            ; Will return outer scope: nothing gets out except for funcs
-                                          (= scope outerScope))))  ; / macro output
+(mac macDeclareOrHoist (dest "buffer") 
+  (do
+    ; Declare vars and funcs or hoist funcs as appropriate
+    `(do
+       (= vars  ``()
+         funcs ``()
+         dec   "var ")
+       ; Deal with new names: declare, drop, or bubble up if funcs
+       (if (?! args) (= args ``()))
+       (for name scope.hoist
+         (if (and (not (in name outerScope.hoist))
+               (not (in name args)))
+           (if (in name (Object.keys functions))
+             (if (and opts.topScope (in name functionsRedeclare))
+               (vars.push name)
+               (if (notRedefined name)
+                 (funcs.push name)))
+             (elif (or (in name (Object.keys opFuncs))
+                     (in name (Object.keys macros)))
+               (funcs.push name))
+             (if (not (is name "this"))
+               (vars.push name)))))
+       (for name scope.service
+         (if (not (in name outerScope.service))
+           (vars.push name)))
+       ; Declare vars
+       (while (> vars.length 0) (do
+                                  (= name (vars.shift))
+                                  (if (in name vars)
+                                    (throw (Error (+ "compiler error: duplicate var in declarations:" name))))  ; no pr, expecting string
+                                  (+= dec (+ name ", "))))
+       (if (> dec.length 4)
+         (do (= dec (dec.slice 0 (- dec.length 2)))
+           (do ,dest (.unshift dec))))
+       ; Declare funcs if functions, otherwise bubble all the way up
+       (if (and (? isTopLevel) isTopLevel)
+         (while (> funcs.length 0) 
+           (do
+             (= func (funcs.pop))
+             (if (in func funcs)
+               (throw (Error (+ "compiler error: duplicate func in declarations:" func))))  ; no pr, expecting string
+             (if (in func (Object.keys functions))
+               ; embed only if not redeclared or redefined
+               (if (notRedefined func)
+                 (if (and (? functions[func].name) (isnt functions[func].name ""))
+                   ; embed like named function
+                   (do ,dest (.unshift (functions[func].toString)))
+                   ; embed like lambda
+                   (if (isVarName func)
+                     (do ,dest (.unshift (+ "var " func " = " (functions[func].toString) ";"))))))
+               (elif (and (in func (Object.keys macros)) (isVarName func))
+                 (do ,dest (.unshift (+ "var " func " = " (macros[func].toString) ";"))))
+               ; ToDo embedding of opFuncs with .toString and renaming of references in code when not first in list
+               (elif (and (in func (Object.keys opFuncs)) (isVarName func))
+                 (do ,dest (.unshift (+ "var " opFuncs[func].name " = " (opFuncs[func].func.toString) ";"))))  ; no pr, expecting strings
+               (throw (Error (+ "unrecognised func: " (pr func)))))))
+         (for func funcs
+           (if (not (in func outerScope.hoist))
+             (outerScope.hoist.push func))))
+       ; Will return outer scope: nothing gets out except for funcs
+       (= scope outerScope))))  ; / macro output
   ; /macro
 
-(mac macCompileSpecial opts (do
-                             `(fn form scope (opts (:)) nested (do
-                                                                (= buffer   ``()
-                                                                   form     (form.slice)  ; duplicate object to avoid changing it for callers
-                                                                   formName (form.shift))
-                               ; Check args number if relevant
-                                                                ,(if opts.argsMin
-                                                                     `(if (< form.length ,opts.argsMin)
-                                                                          (throw (Error (+ (pr formName) " expects no less than " (pr ,opts.argsMin) " arguments")))))
-                                                                ,(if opts.argsMax
-                                                                     `(if (> form.length ,opts.argsMax)
-                                                                          (throw (Error (+ (pr formName) " expects no more than " (pr ,opts.argsMax) " arguments")))))
-                               ; Unset nested if passed, move value under another name to avoid propagating it further (compile macros pass it automatically)
-                                                                (= nestedLocal (if (? nested) nested true)
-                                                                   nested      undefined)
-                               ; Put in code from caller
-                                                                ,opts.code
-                               ; Return compiled
-                                                                (Array buffer scope)))))
+(mac macCompileSpecial opts 
+  (do
+    `(fn form scope (opts (:)) nested 
+       (do
+         (= buffer   ``()
+           form     (form.slice)  ; duplicate object to avoid changing it for callers
+           formName (form.shift))
+         ; Check args number if relevant
+         ,(if opts.argsMin
+            `(if (< form.length ,opts.argsMin)
+               (throw (Error (+ (pr formName) " expects no less than " (pr ,opts.argsMin) " arguments")))))
+         ,(if opts.argsMax
+            `(if (> form.length ,opts.argsMax)
+               (throw (Error (+ (pr formName) " expects no more than " (pr ,opts.argsMax) " arguments")))))
+         ; Unset nested if passed, move value under another name to avoid propagating it further (compile macros pass it automatically)
+         (= nestedLocal (if (? nested) nested true)
+           nested      undefined)
+         ; Put in code from caller
+         ,opts.code
+         ; Return compiled
+         (Array buffer scope)))))
     ; /lambda
   ; /macro
 
@@ -268,355 +275,356 @@
 ; Compiles form, switching between types
 ; Takes: <form to compile> <scope> <options>
 ; Returns: <array of compiled strings> <modified scope>
-(def compileForm form scope (opts (:)) nested (do
-  ; Switch between form types and compile accordingly
-                                               (if (and (isList form) (utils.isBlankObject form))
-                                                 `(("") scope)
-                                                 (elif (isAtom form) (do
-                                                   ; ToDo: check for reserved and forbidden words right here
-                                                   ; If name of toprange jisp func, hoist if not redefined earlier
-                                                   ; If name of operator, hoist appropriate func and replace atom with func name
-                                                                      (if (or (and (in form (Object.keys functions))
-                                                                                   (notRedefined form))
-                                                                              (in form (Object.keys macros)))
-                                                                        (macDeclareVar form no)
-                                                                        ; ToDo only do this when not first element in list
-                                                                        (elif (in form (Object.keys opFuncs))
-                                                                          (do
-                                                                            (macDeclareVar form no)
-                                                                            (= form opFuncs[form].name))))
-                                                   ; If name is a service name like #ref, declare it as a service var and replace the name
-                                                                      (if (isService form) (do
-                                                                        ; Get service part of name
-                                                                                            (= serv (getServicePart form)
-                                                                                               re   (RegExp (+ "^" serv)))
-                                                                        ; Define corresponding service var, get replacement name
-                                                                                            (if (not (in serv (Object.keys scope.replace)))
-                                                                                                (macDeclareService scope.replace[serv] (cdr serv)))
-                                                                        ; Replace service part of this name
-                                                                                            (= form (form.replace re scope.replace[serv]))))
-                                                                      `((form) scope)))
-                                                 (elif (isHash form) (do
-                                                                      (= buffer `())
-                                                   ; Unset nested
-                                                                      (= nested undefined)
-                                                                      (over val key form
-                                                                        (macCompileGetLast val form[key]))
-                                                                      (buffer.push form)
-                                                                      `(buffer scope)))
-                                                 (do  ; Assume list, either special form or function call
-                                                   (if (not (isList form)) (throw (Error (+ "expecting list, got: " (pr form)))))
-                                                   (= buffer `())
-                                                   (= form (form.slice))  ; duplicate object to avoid changing it for callers
-                                                   (if (in (car form) (Object.keys specials))  ; special forms have their own rules
-                                                     (= (buffer scope) (specials[(car form)] form scope opts nested))
-                                                     ; if a macro definition, define it and revise the result
-                                                     (elif (is (car form) "mac")
-                                                       (macCompileAdd (parseMacros form)))
-                                                     ; if a known macro, expand it and revise the result
-                                                     (elif (in (car form) (Object.keys macros))
-                                                       (do
-                                                         ; fork the `replace` part of the scope to trigger new service declarations
-                                                         ; this ensures no overlaps in service names like #res between outer and inner code
-                                                         (= oldReplace    scope.replace
-                                                            scope.replace (:))
-                                                         (macCompileAdd (expandMacros form))
-                                                         ; revert to the outer `replace` store, dropping the inner store (which should be no longer relevant)
-                                                         (= scope.replace oldReplace)))
-                                                     (do  ; Not a special form? -> function call
-                                                       ; Unset nested (callees assume true)
-                                                       (= nestedLocal nested
-                                                          nested      undefined)
-                                                       ; Compile first element (compiles to itself if atom)
-                                                       (macCompileGetLast (form.shift) first)
-                                                       ; If jisp-top-level func, hoist it
-                                                       (if (and (in first (Object.keys functions))
-                                                                (notRedefined first))
-                                                         (macDeclareVar first no))
-                                                       ; If operator, check if we're inside compile call to another operator; if not, put this into options
-                                                       (if (in first (Object.keys operators))
-                                                           (do (if (not opts.compilingOperator) (= isOuterOperator yes))
-                                                               (= innerType              (or nestedLocal (is opts.compilingOperator))
-                                                                  opts.compilingOperator yes))
-                                                           ; If not operator, unset operator option for inner calls
-                                                           (do (= opts (JSON.parse (JSON.stringify opts)))
-                                                               (delete opts.compilingOperator)))
-                                                       ; Compile each element and test for spread
-                                                       (for arg i form (do
-                                                                        (if (hasSpread arg)
-                                                                            (do
-                                                                              (= argsSpread true)
-                                                                              (macCompileGetLast arg arg)
-                                                                              (= form[i] `("spread" arg)))
-                                                                            (do
-                                                                              (macCompileGetLast arg arg)
-                                                                              (= form[i] arg)))))
-                                                       ; Compile: simple or with spread
-                                                       (if (?! argsSpread)
-                                                         (if (in first (Object.keys operators))
-                                                             (buffer.push (operators[first] form innerType))
-                                                             (buffer.push (+ (pr first) "(" (spr form) ")")))
-                                                         (do  ; Compile as spread
-                                                           ; Compile args into expression that produces single list with elements spread into it, like `(1 2 ...`(3 4)) -> `(1 2 3 4)
-                                                           (= form `("quote" ,form))
-                                                           (macCompileGetLast form form)
-                                                           ; Embed as function and replace `first`
-                                                           ; Only operators that take multiple arguments allow spread; others give a compile error
-                                                           (if (in first (Object.keys operators))
-                                                             ; ToDo implement embedding as .toString and renaming of references which are not first element in list
-                                                             (if (and (in first (Object.keys opFuncs))
-                                                                      (spr opFuncs[first]))
-                                                                 (do (macDeclareVar first no)
-                                                                     (= first opFuncs[first].name))
-                                                                 (throw (Error (+ (pr first) " can't spread arguments (yet)")))))
-                                                           ; Split object name and method for applying
-                                                           (= split (utils.splitName first))
-                                                           (if (> split.length 1)
-                                                               (= method (split.pop)
-                                                                  name   (split.join ""))
-                                                               (= method ""
-                                                                  name   (car split)))
-                                                           ; Apply, passing self and list of spread args
-                                                           (if (isIdentifier name)
-                                                             (buffer.push (+ name method ".apply(" name ", " (pr form) ")"))
-                                                             (do (= (collector scope) (declareService "_ref" scope))
-                                                                 (buffer.push (+ "(" collector " = " name ")" method ".apply(" collector ", " (pr form) ")"))))))))
-                                                       ; Unset operator option for outer calls
-                                                   (if (? isOuterOperator)
-                                                       (delete opts.compilingOperator))
-                                                       ; Return compiled
-                                                   `(buffer scope)))))
+(def compileForm form scope (opts (:)) nested 
+  (do
+    ; Switch between form types and compile accordingly
+    (if (and (isList form) (utils.isBlankObject form))
+      `(("") scope)
+      (elif (isAtom form) 
+        (do
+          ; ToDo: check for reserved and forbidden words right here
+          ; If name of toprange jisp func, hoist if not redefined earlier
+          ; If name of operator, hoist appropriate func and replace atom with func name
+          (if (or (and (in form (Object.keys functions))
+                    (notRedefined form))
+                (in form (Object.keys macros)))
+            (macDeclareVar form no)
+            ; ToDo only do this when not first element in list
+            (elif (in form (Object.keys opFuncs))
+              (do
+                (macDeclareVar form no)
+                (= form opFuncs[form].name))))
+          ; If name is a service name like #ref, declare it as a service var and replace the name
+          (if (isService form) 
+            (do
+              ; Get service part of name
+              (= serv (getServicePart form)
+                re   (RegExp (+ "^" serv)))
+              ; Define corresponding service var, get replacement name
+              (if (not (in serv (Object.keys scope.replace)))
+                (macDeclareService scope.replace[serv] (cdr serv)))
+              ; Replace service part of this name
+              (= form (form.replace re scope.replace[serv]))))
+          `((form) scope)))
+      (elif (isHash form) 
+        (do
+          (= buffer `())
+          ; Unset nested
+          (= nested undefined)
+          (over val key form
+            (macCompileGetLast val form[key]))
+          (buffer.push form)
+          `(buffer scope)))
+      (do  ; Assume list, either special form or function call
+        (if (not (isList form)) (throw (Error (+ "expecting list, got: " (pr form)))))
+        (= buffer `())
+        (= form (form.slice))  ; duplicate object to avoid changing it for callers
+        (if (in (car form) (Object.keys specials))  ; special forms have their own rules
+          (= (buffer scope) (specials[(car form)] form scope opts nested))
+          ; if a macro definition, define it and revise the result
+          (elif (is (car form) "mac")
+            (macCompileAdd (parseMacros form)))
+          ; if a known macro, expand it and revise the result
+          (elif (in (car form) (Object.keys macros))
+            (do
+              ; fork the `replace` part of the scope to trigger new service declarations
+              ; this ensures no overlaps in service names like #res between outer and inner code
+              (= oldReplace    scope.replace
+                scope.replace (:))
+              (macCompileAdd (expandMacros form))
+              ; revert to the outer `replace` store, dropping the inner store (which should be no longer relevant)
+              (= scope.replace oldReplace)))
+          (do  ; Not a special form? -> function call
+            ; Unset nested (callees assume true)
+            (= nestedLocal nested
+              nested      undefined)
+            ; Compile first element (compiles to itself if atom)
+            (macCompileGetLast (form.shift) first)
+            ; If jisp-top-level func, hoist it
+            (if (and (in first (Object.keys functions))
+                  (notRedefined first))
+              (macDeclareVar first no))
+            ; If operator, check if we're inside compile call to another operator; if not, put this into options
+            (if (in first (Object.keys operators))
+              (do (if (not opts.compilingOperator) (= isOuterOperator yes))
+                (= innerType              (or nestedLocal (is opts.compilingOperator))
+                  opts.compilingOperator yes))
+              ; If not operator, unset operator option for inner calls
+              (do (= opts (JSON.parse (JSON.stringify opts)))
+                (delete opts.compilingOperator)))
+            ; Compile each element and test for spread
+            (for arg i form (do
+                              (if (hasSpread arg)
+                                (do
+                                  (= argsSpread true)
+                                  (macCompileGetLast arg arg)
+                                  (= form[i] `("spread" arg)))
+                                (do
+                                  (macCompileGetLast arg arg)
+                                  (= form[i] arg)))))
+            ; Compile: simple or with spread
+            (if (?! argsSpread)
+              (if (in first (Object.keys operators))
+                (buffer.push (operators[first] form innerType))
+                (buffer.push (+ (pr first) "(" (spr form) ")")))
+              (do  ; Compile as spread
+                ; Compile args into expression that produces single list with elements spread into it, like `(1 2 ...`(3 4)) -> `(1 2 3 4)
+                (= form `("quote" ,form))
+                (macCompileGetLast form form)
+                ; Embed as function and replace `first`
+                ; Only operators that take multiple arguments allow spread; others give a compile error
+                (if (in first (Object.keys operators))
+                  ; ToDo implement embedding as .toString and renaming of references which are not first element in list
+                  (if (and (in first (Object.keys opFuncs))
+                        (spr opFuncs[first]))
+                    (do (macDeclareVar first no)
+                      (= first opFuncs[first].name))
+                    (throw (Error (+ (pr first) " can't spread arguments (yet)")))))
+                ; Split object name and method for applying
+                (= split (utils.splitName first))
+                (if (> split.length 1)
+                  (= method (split.pop)
+                    name   (split.join ""))
+                  (= method ""
+                    name   (car split)))
+                ; Apply, passing self and list of spread args
+                (if (isIdentifier name)
+                  (buffer.push (+ name method ".apply(" name ", " (pr form) ")"))
+                  (do (= (collector scope) (declareService "_ref" scope))
+                    (buffer.push (+ "(" collector " = " name ")" method ".apply(" collector ", " (pr form) ")"))))))))
+        ; Unset operator option for outer calls
+        (if (? isOuterOperator)
+          (delete opts.compilingOperator))
+        ; Return compiled
+        `(buffer scope)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;; Special Logic For Special Forms ;;;;;;;;;;;;;;;;;;;;;;;
 
 (= specials (:))
 
-(= specials.do (macCompileSpecial
-                (code: (do
-                        (if opts.isTopLevel
-                          (do (= isTopLevel true)
-                              (delete opts.isTopLevel)))
-                        (if isTopLevel (macForkScope))
-                        (for exp i form (do
-                          ; `nested` tells the compiler whether the compiled form is going to be on its own line or merged with something
-                                         (= nested (or (and (not isTopLevel)
-                                                            (is i (- form.length 1))
-                                                            nestedLocal)
-                                                       (isPropertyExp form[(+ i 1)])))
-                                         (if (?! exp)
-                                           (buffer.push exp)
-                                           (if (isPropertyExp exp)
-                                             ; .dot or [bracket] notation: implicit reference to last object for method chaining
-                                             (do (= ref (buffer.pop))
-                                               (if (?! ref) (= ref ""))
-                                               (macCompileAdd exp)
-                                               (buffer.push (+ ref "\n" (buffer.pop))))
-                                             ; simple sequence element
-                                             (macCompileAdd exp)))))
-                        (if isTopLevel (macDeclareOrHoist))))))
+(= specials["awaitn"]
+  (fn form scope (opts (:)) nested
+    (do 
+      (= (compiled buffer scope) (compileResolve (tail form) `(()) scope opts nested))
+      (= (...h t) compiled)
+      (h.push (+ "await " t))
+      (Array h scope))))
 
+(= specials.do 
+  (macCompileSpecial
+    (code: (do
+             (if opts.isTopLevel
+               (do (= isTopLevel true)
+                 (delete opts.isTopLevel)))
+             (if isTopLevel (macForkScope))
+             (for exp i form 
+               (do
+                 ; `nested` tells the compiler whether the compiled form is going to be on its own line or merged with something
+                 (= nested (or (and (not isTopLevel)
+                                 (is i (- form.length 1))
+                                 nestedLocal)
+                             (isPropertyExp form[(+ i 1)])))
+                 (if (?! exp)
+                   (buffer.push exp)
+                   (if (isPropertyExp exp)
+                     ; .dot or [bracket] notation: implicit reference to last object for method chaining
+                     (do (= ref (buffer.pop))
+                       (if (?! ref) (= ref ""))
+                       (macCompileAdd exp)
+                       (buffer.push (+ ref "\n" (buffer.pop))))
+                     ; simple sequence element
+                     (macCompileAdd exp)))))
+             (if isTopLevel (macDeclareOrHoist))))))
 
-
-
-(;mac new-scope ...body
-     `((fn (do ,...body))))
-
-(;mac do-recur ...params body
-     `(new-scope
-        (= recur (fn ,body))
-        (recur ,...params)))
-
-(;= specials.source
-   (fn form scope
-       (Array
-         (JSON.stringify
-           (do-recur form[1]
-                     (if (isList #0)
-                       (+ "(" ((for item #0
-                                    (recur item)).join " ") ")")
-                       (elif #0 #0)
-                       "")))
-                       
-         scope)))
-
-(= specials.quote (macCompileSpecial (argsMin: 1 argsMax: 1
-                                      code: (do
-                                             (= form (car form))
-                                             (if (and (isAtom form) (not (utils.isPrimitive form)) (not (utils.isSpecialValue form)))
-                                               (buffer.push (JSON.stringify form))  ; identifiers and strings get additional quotes that soak up the additional rendering done when expanding a macro
-                                               (elif (isAtom form)
-                                                 (buffer.push form))
-                                               (elif (isHash form)
-                                                 (if (not opts.macro)
-                                                   (do (over exp key form
-                                                         (macCompileGetLast exp form[key]))
-                                                       (buffer.push form))
-                                                   ; in macro: quote all elements in hash
-                                                   (do (= newform (:))
-                                                       (over exp key form (do
-                                                                           (= key (JSON.stringify key))
-                                                                           (macCompileGetLast `("quote" exp) newform[key])))
-                                                       (buffer.push newform))))
-                                               ; assume list
-                                               (do
-                                                 ; todo no concat if single exp
-                                                 (= arr `()    ; collector array literal
-                                                    res "[]")  ; collector string for .concat
-                                                 (for exp form (do
-                                                                (if (and (isList exp)    (is (car exp) "quote")
-                                                                         (isList exp[1]) (is exp[1].length 0))
-                                                                  (arr.push `())  ; quoted empty list becomes empty array literal
-                                                                  (elif (and (isList exp) (is (car exp) "unquote")
-                                                                             (isList exp[1]) (is (car exp[1]) "spread"))
-                                                                    (do  ; explicit unquote
-                                                                      ; if someone puts more than a single element into a spread list, all but the first will be lost; todo assert number
-                                                                      (macCompileGetLast (car (cdr exp)) exp)
-                                                                      (if (? exp)
-                                                                        (do
-                                                                          (if (> arr.length 0)
-                                                                              (do (+= res (+ ".concat(" (pr arr) ")"))
-                                                                                  (= arr `())))
-                                                                          (+= res (+ ".concat(" (pr exp) ")"))))))
-                                                                  (elif (and (isList exp) (is (car exp) "quote"))
-                                                                    (do (macCompileGetLast exp exp)
-                                                                        (if (? exp) (arr.push exp))))
-                                                                  (elif (and (isList exp) (is (car exp) "unquote"))
-                                                                    (do (macCompileGetLast exp exp)
-                                                                        (if (and (? exp) opts.macro)
-                                                                          (if (isList exp)
-                                                                            (for item i exp
-                                                                              ; atoms need to be re-quoted after compilation
-                                                                              (if (isAtom item)
-                                                                                (macCompileGetLast `("quote" item) exp[i])))))
-                                                                        (if (? exp) (arr.push exp))))
-                                                                  (elif (and (isList exp) (is (car exp) "spread")
-                                                                             (not opts.macro))
-                                                                    (do  ; implicit unquote outside macro
-                                                                      (macCompileGetLast exp exp)
-                                                                      (if (? exp)
-                                                                        (do
-                                                                          (if (> arr.length 0)
-                                                                              (do (+= res (+ ".concat(" (pr arr) ")"))
-                                                                                  (= arr `())))
-                                                                          (+= res (+ ".concat(" (pr exp) ")"))))))
-                                                                  (do (if (and (isAtom exp) (not opts.macro))
-                                                                        (macCompileGetLast exp exp)
-                                                                        (macCompileGetLast `("quote" exp) exp))
-                                                                      (if (? exp) (arr.push exp))))))
-                                                 (if (> arr.length 0)
-                                                     (if (is res "[]") (= res (pr arr))
-                                                         (+= res (+ ".concat(" (pr arr) ")"))))
-                                                 (buffer.push res)))))))
+(= specials.quote (macCompileSpecial 
+                    (argsMin: 1 argsMax: 1
+                      code: (do
+                              (= form (car form))
+                              (if (and (isAtom form) (not (utils.isPrimitive form)) (not (utils.isSpecialValue form)))
+                                (buffer.push (JSON.stringify form))  ; identifiers and strings get additional quotes that soak up the additional rendering done when expanding a macro
+                                (elif (isAtom form)
+                                  (buffer.push form))
+                                (elif (isHash form)
+                                  (if (not opts.macro)
+                                    (do (over exp key form
+                                          (macCompileGetLast exp form[key]))
+                                      (buffer.push form))
+                                    ; in macro: quote all elements in hash
+                                    (do (= newform (:))
+                                      (over exp key form (do
+                                                           (= key (JSON.stringify key))
+                                                           (macCompileGetLast `("quote" exp) newform[key])))
+                                      (buffer.push newform))))
+                                ; assume list
+                                (do
+                                  ; todo no concat if single exp
+                                  (= arr `()    ; collector array literal
+                                    res "[]")  ; collector string for .concat
+                                  (for exp form 
+                                    (do
+                                      (if (and (isList exp) (is (car exp) "quote")
+                                            (isList exp[1]) (is exp[1].length 0))
+                                        (arr.push `())  ; quoted empty list becomes empty array literal
+                                        (elif (and (isList exp) (is (car exp) "unquote")
+                                                (isList exp[1]) (is (car exp[1]) "spread"))
+                                          (do  ; explicit unquote
+                                            ; if someone puts more than a single element into a spread list, all but the first will be lost; todo assert number
+                                            (macCompileGetLast (car (cdr exp)) exp)
+                                            (if (? exp)
+                                              (do
+                                                (if (> arr.length 0)
+                                                  (do (+= res (+ ".concat(" (pr arr) ")"))
+                                                    (= arr `())))
+                                                (+= res (+ ".concat(" (pr exp) ")"))))))
+                                        (elif (and (isList exp) (is (car exp) "quote"))
+                                          (do (macCompileGetLast exp exp)
+                                            (if (? exp) (arr.push exp))))
+                                        (elif (and (isList exp) (is (car exp) "unquote"))
+                                          (do (macCompileGetLast exp exp)
+                                            (if (and (? exp) opts.macro)
+                                              (if (isList exp)
+                                                (for item i exp
+                                                  ; atoms need to be re-quoted after compilation
+                                                  (if (isAtom item)
+                                                    (macCompileGetLast `("quote" item) exp[i])))))
+                                            (if (? exp) (arr.push exp))))
+                                        (elif (and (isList exp) (is (car exp) "spread")
+                                                (not opts.macro))
+                                          (do  ; implicit unquote outside macro
+                                            (macCompileGetLast exp exp)
+                                            (if (? exp)
+                                              (do
+                                                (if (> arr.length 0)
+                                                  (do (+= res (+ ".concat(" (pr arr) ")"))
+                                                    (= arr `())))
+                                                (+= res (+ ".concat(" (pr exp) ")"))))))
+                                        (do (if (and (isAtom exp) (not opts.macro))
+                                              (macCompileGetLast exp exp)
+                                              (macCompileGetLast `("quote" exp) exp))
+                                          (if (? exp) (arr.push exp))))))
+                                  (if (> arr.length 0)
+                                    (if (is res "[]") (= res (pr arr))
+                                      (+= res (+ ".concat(" (pr arr) ")"))))
+                                  (buffer.push res)))))))
     
 
-(= specials.unquote (macCompileSpecial (argsMin: 1 argsMax: 1
-                                        code: (do
-                                               (= form (car form))
-                                               (if (and (isList form) (is (car form) "quote"))
-                                                   (macCompileGetLast form form))
-                                               (macCompileAdd form)))))
+(= specials.unquote (macCompileSpecial
+                      (argsMin: 1 argsMax: 1
+                        code: (do
+                                (= form (car form))
+                                (if (and (isList form) (is (car form) "quote"))
+                                  (macCompileGetLast form form))
+                                (macCompileAdd form)))))
 
-(= specials["="] (macCompileSpecial (argsMin: 1
-; (= <name> <form> <name> <form> ...)
-; (= <name>)
-                                     code: (do
-                                            (if (is form.length 1)
-                                              (do (macDeclareVar (car form))
-                                                  (macCompileAdd (car form)))
-                                              (do
-                                                (assertExp form {is (% #0.length 2) 0} "an even number of arguments")
-                                                (while (> form.length 0) (do
-                                                                          (= left  (form.shift)
-                                                                             right (form.shift))
-                                                                          (= lastAssign (if (is form.length 0) true))
-                                                                          (macCompileGetLast right right)
-                                                  ; Check and expand if has macros
-                                                                          (macMacroCheck left)
-                                                                          (if (and (isList left) (is (car left) "get"))  ; property access
-                                                                            (do (macCompileGetLast left left)
-                                                                                (= res (+ (pr left) " = " (pr right)))
-                                                                                (if (and lastAssign nestedLocal (isnt nestedLocal "parens"))
-                                                                                    (= res (+ "(" res ")")))
-                                                                                (buffer.push res))
-                                                                            (elif (isList left) (do  ; destructuring assignment
-                                                                                                 (macDeclareService ref "_ref")
-                                                                                                 (macDeclareService ind "_i")
-                                                                                                 (buffer.push (+ ref " = " (pr right)))
-                                                                                                 (= spreads 0)
-                                                                                                 (for name i left
-                                                                                                   (if (is (car name) "spread")
-                                                                                                     (do
-                                                                                                       (if (> (++ spreads) 1) (throw (Error "an assignment can only have one spread")))
-                                                                                                       (macCompileGetLast name name)
-                                                                                                       (macDeclareVar name)
-                                                                                                       (= spreadname name
-                                                                                                          spreadind  i)
-                                                                                                       (buffer.push (+ "var " spreadname " = " left.length " <= " ref ".length ? [].slice.call(" ref ", " spreadind ", " ind " = " ref ".length - " (- left.length spreadind 1) ") : (" ind " = " spreadind ", [])")))
-                                                                                                     (elif (?! spreadname)
-                                                                                                       (do (macCompileGetLast name name)
-                                                                                                           (if (isVarName name) (macDeclareVar name))
-                                                                                                           (buffer.push (+ (pr name) " = " ref "[" i "]"))))
-                                                                                                     (do (macCompileGetLast name name)
-                                                                                                         (if (isVarName name) (macDeclareVar name))
-                                                                                                         (buffer.push (+ (pr name) " = " ref "[" ind "++]")))))))
-                                                                            (do (if (isVarName left) (macDeclareVar left))  ; normal assignment
-                                                                                (assertExp left isIdentifier)
-                                                                                (= res (+ (pr left) " = " (pr right)))
-                                                                                (if (and (isHash right) (not nestedLocal))
-                                                                                  (+= res ";"))  ; a hash table assignment needs to end with a semicolon, otherwise the next line is considered a part of this one
-                                                                                (if (and lastAssign nestedLocal (isnt nestedLocal "parens"))
-                                                                                    (= res (+ "(" res ")")))
-                                                                                (buffer.push res)))))))))))
+
+(= specials["="] (macCompileSpecial 
+                   (argsMin: 1
+                     ; (= <name> <form> <name> <form> ...)
+                     ; (= <name>)
+                     code: (do
+                             (if (is form.length 1)
+                               (do (macDeclareVar (car form))
+                                 (macCompileAdd (car form)))
+                               (do
+                                 (assertExp form {is (% #0.length 2) 0} "an even number of arguments")
+                                 (while (> form.length 0) 
+                                   (do
+                                     (= left  (form.shift)
+                                       right (form.shift))
+                                     (= lastAssign (if (is form.length 0) true))
+                                     (macCompileGetLast right right)
+                                     ; Check and expand if has macros
+                                     (macMacroCheck left)
+                                     (if (and (isList left) (is (car left) "get"))  ; property access
+                                       (do (macCompileGetLast left left)
+                                         (= res (+ (pr left) " = " (pr right)))
+                                         (if (and lastAssign nestedLocal (isnt nestedLocal "parens"))
+                                           (= res (+ "(" res ")")))
+                                         (buffer.push res))
+                                       (elif (isList left) 
+                                         (do  ; destructuring assignment
+                                           (macDeclareService ref "_ref")
+                                           (macDeclareService ind "_i")
+                                           (buffer.push (+ ref " = " (pr right)))
+                                           (= spreads 0)
+                                           (for name i left
+                                             (if (is (car name) "spread")
+                                               (do
+                                                 (if (> (++ spreads) 1) (throw (Error "an assignment can only have one spread")))
+                                                 (macCompileGetLast name name)
+                                                 (macDeclareVar name)
+                                                 (= spreadname name
+                                                   spreadind  i)
+                                                 (buffer.push (+ "var " spreadname " = " left.length " <= " ref ".length ? [].slice.call(" ref ", " spreadind ", " ind " = " ref ".length - " (- left.length spreadind 1) ") : (" ind " = " spreadind ", [])")))
+                                               (elif (?! spreadname)
+                                                 (do (macCompileGetLast name name)
+                                                   (if (isVarName name) (macDeclareVar name))
+                                                   (buffer.push (+ (pr name) " = " ref "[" i "]"))))
+                                               (do (macCompileGetLast name name)
+                                                 (if (isVarName name) (macDeclareVar name))
+                                                 (buffer.push (+ (pr name) " = " ref "[" ind "++]")))))))
+                                       (do (if (isVarName left) (macDeclareVar left))  ; normal assignment
+                                         (assertExp left isIdentifier)
+                                         (= res (+ (pr left) " = " (pr right)))
+                                         (if (and (isHash right) (not nestedLocal))
+                                           (+= res ";"))  ; a hash table assignment needs to end with a semicolon, otherwise the next line is considered a part of this one
+                                         (if (and lastAssign nestedLocal (isnt nestedLocal "parens"))
+                                           (= res (+ "(" res ")")))
+                                         (buffer.push res)))))))))))
 
 ; Mostly the same code for `fn` and `def`
-(mac macFunctionDefinition (type "fn")
+(mac macFunctionDefinition (type "fn") (isAsync no)
   `(macCompileSpecial
-    (code: (do
-      ; Fork scope in accordance with JS function scoping
-            (macForkScope)
-            ,(if (is type "fn")  ; different arg splitting for `fn` and `def`
-              `(= (...args body) form)
-              `(do
-                (= (fname ...args body) form)
-                (macDeclareVar fname yes no)))
-            (scope.hoist.push ...(getArgNames args))
-            (if (?! body) (= body ``()))
-            (= optionals ``()
-               spreads   0)
-            (for arg i args (do
-              ; Expand if macro
-                             (macMacroCheck arg)
-                             (if (isList arg)
-                               (do
-                                 (assertExp arg {is #0.length 2} "optional or rest parameter")
-                                 (if (is (car arg) "spread")
-                                   (do
-                                     (if (> (++ spreads) 1) (throw (Error "cannot define more than one rest parameter")))
-                                     (macDeclareService ind "_i")
-                                     (macCompileGetLast arg name)
-                                     (assertExp name isVarName "valid identifier")
-                                     (= restname name
-                                        restind  i
-                                        args[i]  restname)
-                                     (= rest (list (+ "var " name " = " args.length " <= arguments.length ? [].slice.call(arguments, " i ", " ind " = arguments.length - " (- args.length i 1) ") : (" ind " = " restind ", [])"))))
-                                   (do  ; assume optional parameter
-                                     (assertExp (= name (car arg)) isVarName "valid parameter name")
-                                     (= args[i] name)
-                                     (optionals.push ``("if" ("?!" name) ("=" name arg[1]))))))
-                               (elif restname
-                                 (rest.push (+ (pr arg) " = arguments[" ind "++]"))))))  ; when there's a restname, `ind` is defined
-            (if (? restind) (= args (args.slice 0 restind)))  ; drop restarg and all following args from arg list; prevents bug with empty rest
-            (if (> optionals.length 0) (= body ``("do" ...optionals body)))
-            (= body (returnify body))  ; put form into `("return" ...) special form
-            (macCompileResolve body body)
-            (if rest (body.unshift ...rest))
-      ; Declare vars
-            (macDeclareOrHoist body)
-            ,(if (is type "fn")  ; different template for `fn` and `def`
-              `(buffer.push (+ "(function(" (spr args) ") {" (render body) " })"))
-              `(do
-                (buffer.push (+ "function " fname "(" (spr args) ") {" (render body) " }"))
-                (buffer.push fname)))))))
+     (code: (do
+              ; Fork scope in accordance with JS function scoping
+              (macForkScope)
+              ,(if (is type "fn")  ; different arg splitting for `fn` and `def`
+                 `(= (...args body) form)
+                 `(do
+                    (= (fname ...args body) form)
+                    (macDeclareVar fname yes no)))
+              (scope.hoist.push ...(getArgNames args))
+              (if (?! body) (= body ``()))
+              (= optionals ``()
+                spreads   0)
+              (for arg i args 
+                (do
+                  ; Expand if macro
+                  (macMacroCheck arg)
+                  (if (isList arg)
+                    (do
+                      (assertExp arg {is #0.length 2} "optional or rest parameter")
+                      (if (is (car arg) "spread")
+                        (do
+                          (if (> (++ spreads) 1) (throw (Error "cannot define more than one rest parameter")))
+                          (macDeclareService ind "_i")
+                          (macCompileGetLast arg name)
+                          (assertExp name isVarName "valid identifier")
+                          (= restname name
+                            restind  i
+                            args[i]  restname)
+                          (= rest (list (+ "var " name " = " args.length " <= arguments.length ? [].slice.call(arguments, " i ", " ind " = arguments.length - " (- args.length i 1) ") : (" ind " = " restind ", [])"))))
+                        (do  ; assume optional parameter
+                          (assertExp (= name (car arg)) isVarName "valid parameter name")
+                          (= args[i] name)
+                          (optionals.push ``("if" ("?!" name) ("=" name arg[1]))))))
+                    (elif restname
+                      (rest.push (+ (pr arg) " = arguments[" ind "++]"))))))  ; when there's a restname, `ind` is defined
+              (if (? restind) (= args (args.slice 0 restind)))  ; drop restarg and all following args from arg list; prevents bug with empty rest
+              (if (> optionals.length 0) (= body ``("do" ...optionals body)))
+              (= body (returnify body))  ; put form into `("return" ...) special form
+              (macCompileResolve body body)
+              (if rest (body.unshift ...rest))
+              ; Declare vars
+              (macDeclareOrHoist body)
+              ,(if isAsync 
+                 `(= aprefix "async ") 
+                 `(= aprefix ""))
+              ,(if (is type "fn")  ; different template for `fn` and `def`
+                 `(buffer.push (+ "(" aprefix "function(" (spr args) ") {" (render body) " })"))
+                 `(do
+                    (buffer.push (+ aprefix "function " fname "(" (spr args) ") {" (render body) " }"))
+                    (buffer.push fname)))))))
 
 (= specials.fn  (macFunctionDefinition))
 ; (fn <args> (<body>))
@@ -628,30 +636,37 @@
 ; (def <name> (<body>))
 ; (def <name>)
 
-(= specials.mac (fn form
-; (mac <args> (<body>))
-; macro definition: makes a macro and returns `("")
-                 (makeMacro form)))
+(= specials.afn  (macFunctionDefinition fn yes))
+(= specials.adef (macFunctionDefinition def yes))
+
+(= specials.mac 
+  (fn form
+    ; (mac <args> (<body>))
+    ; macro definition: makes a macro and returns `("")
+    (makeMacro form)))
+
 
 ; Puts collector variable in end of given branch
-(def collect compiled collector (isCase no) (nestedLocal yes) (do
-                                                               (if (and (isList compiled) (> compiled.length 0)) (do
-                                                                 ; when I wrote this, only God and I knew what this /\{$/ logic was for
-                                                                 ; now, God only knows
-                                                                                                                  (if (/\{$/.test (last compiled))
-                                                                                                                    (= plug (compiled.pop)))
-                                                                                                                  (= lastItem (compiled.pop))
-                                                                 ; collectify if we're nested
-                                                                                                                  (if nestedLocal
-                                                                                                                      (if (/^return\s/.test lastItem)
-                                                                                                                        (= lastItem (lastItem.replace /^return\s/ (+ "return " collector " = ")))
-                                                                                                                        (elif (utils.kwtest lastItem)
-                                                                                                                          (= lastItem (+ collector " = undefined; " lastItem)))
-                                                                                                                        (= lastItem (+ collector " = " (pr lastItem)))))
-                                                                                                                  (compiled.push lastItem)
-                                                                                                                  (if isCase (compiled.push "break"))
-                                                                                                                  (if (? plug) (compiled.push plug))))
-                                                               compiled))
+(def collect compiled collector (isCase no) (nestedLocal yes) 
+  (do
+    (if (and (isList compiled) (> compiled.length 0)) 
+      (do
+        ; when I wrote this, only God and I knew what this /\{$/ logic was for
+        ; now, God only knows
+        (if (/\{$/.test (last compiled))
+          (= plug (compiled.pop)))
+        (= lastItem (compiled.pop))
+        ; collectify if we're nested
+        (if nestedLocal
+          (if (/^return\s/.test lastItem)
+            (= lastItem (lastItem.replace /^return\s/ (+ "return " collector " = ")))
+            (elif (utils.kwtest lastItem)
+              (= lastItem (+ collector " = undefined; " lastItem)))
+            (= lastItem (+ collector " = " (pr lastItem)))))
+        (compiled.push lastItem)
+        (if isCase (compiled.push "break"))
+        (if (? plug) (compiled.push plug))))
+    compiled))
 
 (= specials.if (macCompileSpecial (code: (do
 ; (if <test> <then-branch> (elif <test> <elif-branch>)... <else-branch>)
@@ -721,46 +736,49 @@
                                                   ; more than 1 element in buffer signals to caller that this is not an expression
                                                   (buffer.push ""))))))))
 
-(= specials.switch (macCompileSpecial (code: (do
-; (switch <exp> (case <test> ... <test> <case-branch>) ... <def-branch>)
-; switch <exp> (case <test> <case-branch) ... )  ;;  <def-branch> = undefined
-; todo multiple tests per case
-; todo if last form in function and no returns inside, end each branch with return instead of collector variable
-; what arguments mean
-  ; predicate ...midcases postbranch
-  ; test      cases       default
-                                              (= (predicate ...midcases postbranch) form)
-                                              (if (and (? postbranch) (is (car postbranch) "case"))
-                                                  (do (midcases.push postbranch)
-                                                      (= postbranch undefined)))
-                                              (if nestedLocal (macDeclareService collector "_ref"))
-  ; prepare forms
-                                              (macCompileGetLast predicate predicate "parens")
-                                              (if (?! predicate) (= predicate "false"))  ; JS requires something in that field
-  ; if this isn't nested, further compiled branches should be aware of that
-                                              (= nested nestedLocal)
-                                              (for mid i midcases (do
-                                                                   (assertExp mid (fn x (is (x.shift) "case")) "case")
-                                                                   (= (midtest midbranch) mid)
-                                                                   (macCompileResolve midtest midtest)
-                                                                   (if (?! midtest) (= midtest "false"))  ; JS requires something in that field
-                                                ; temporary ban on more-than-single-expression tests in midcases
-                                                ; todo implement later (check if can use multiple exps with commas)
-                                                                   (if (> midtest.length 1) (throw (Error (+ (pr "case") " must compile to single expression (todo fix later); got: " (pr midtest)))))
-                                                                   (macCompileResolve midbranch midbranch)
-                                                                   (= midcases[i] (test: midtest branch: (collect midbranch collector yes nestedLocal)))))
-                                              (macCompileResolve postbranch postbranch)
-                                              (= postbranch (collect postbranch collector no nestedLocal))
-  ; compile
-                                              (= comp (+ "switch (" (pr predicate) ") { "))
-                                              (for mid midcases
-                                                (+= comp (+ " case " (spr mid.test) ": " (render mid.branch))))
-                                              (+= comp (+ " default: " (render postbranch) " }"))
-                                              (buffer.push comp)
-                                              (if nestedLocal
-                                                  (buffer.push collector)
-                                                  ; more than 1 element in buffer signals to caller that this is not an expression
-                                                  (buffer.push ""))))))
+(= specials.switch (macCompileSpecial 
+                     (code: 
+                       (do
+                         ; (switch <exp> (case <test> ... <test> <case-branch>) ... <def-branch>)
+                         ; switch <exp> (case <test> <case-branch) ... )  ;;  <def-branch> = undefined
+                       ; todo multiple tests per case
+                       ; todo if last form in function and no returns inside, end each branch with return instead of collector variable
+                       ; what arguments mean
+                       ; predicate ...midcases postbranch
+                       ; test      cases       default
+                       (= (predicate ...midcases postbranch) form)
+                       (if (and (? postbranch) (is (car postbranch) "case"))
+                         (do (midcases.push postbranch)
+                           (= postbranch undefined)))
+                       (if nestedLocal (macDeclareService collector "_ref"))
+                       ; prepare forms
+                       (macCompileGetLast predicate predicate "parens")
+                       (if (?! predicate) (= predicate "false"))  ; JS requires something in that field
+                       ; if this isn't nested, further compiled branches should be aware of that
+                       (= nested nestedLocal)
+                       (for mid i midcases 
+                         (do
+                           (assertExp mid (fn x (is (x.shift) "case")) "case")
+                           (= (midtest midbranch) mid)
+                           (macCompileResolve midtest midtest)
+                           (if (?! midtest) (= midtest "false"))  ; JS requires something in that field
+                           ; temporary ban on more-than-single-expression tests in midcases
+                           ; todo implement later (check if can use multiple exps with commas)
+                           (if (> midtest.length 1) (throw (Error (+ (pr "case") " must compile to single expression (todo fix later); got: " (pr midtest)))))
+                           (macCompileResolve midbranch midbranch)
+                           (= midcases[i] (test: midtest branch: (collect midbranch collector yes nestedLocal)))))
+                       (macCompileResolve postbranch postbranch)
+                       (= postbranch (collect postbranch collector no nestedLocal))
+                       ; compile
+                       (= comp (+ "switch (" (pr predicate) ") { "))
+                       (for mid midcases
+                         (+= comp (+ " case " (spr mid.test) ": " (render mid.branch))))
+                       (+= comp (+ " default: " (render postbranch) " }"))
+                       (buffer.push comp)
+                       (if nestedLocal
+                         (buffer.push collector)
+                         ; more than 1 element in buffer signals to caller that this is not an expression
+                         (buffer.push ""))))))
 
 ; Shared collector code for all loops
 (mac macCollect
@@ -1191,26 +1209,29 @@
 (= exports.functions functions)  ; expose functions object for override by user
 
 
-(= exports.compile (def compile src opts (do
-                                          (= defaults (wrap:       yes
-                                                       topScope:   yes   ; for built-in-func overrides
-                                                       isTopLevel: yes   ; for functions wrapping `do`
-                                                       pretty:     yes)  ; enables beautifier
-                                             opts     (utils.merge defaults opts))
-                                          (= parsed (if (Array.isArray src) src (parse (lex (tokenise src)))))
-                                          (parsed.unshift "do")  ; always put code into an implicit `do`
-                                          (if opts.wrap
-                                              (= parsed `(("get" ("fn" parsed) "'call'") "this")))
-                                          (if (not opts.repl)
-                                              (= functionsRedeclare `()
-                                                 functionsRedefine  `()))  ; reset functions override stores when compiling each new file
+(= exports.compile 
+  (def compile src opts 
+    (do
+      (= defaults (wrap:       yes
+                    topScope:   yes   ; for built-in-func overrides
+                    isTopLevel: yes   ; for functions wrapping `do`
+                    pretty:     yes)  ; enables beautifier
+        opts     (utils.merge defaults opts))
+      (= parsed (if (Array.isArray src) src (parse (lex (tokenise src)))))
+      (parsed.unshift "do")  ; always put code into an implicit `do`
+      (if opts.wrap
+        (= parsed `(("get" ("fn" parsed) "'call'") "this")))
+      (if (not opts.repl)
+        (= functionsRedeclare `()
+          functionsRedefine  `()))  ; reset functions override stores when compiling each new file
 
 
-                                          (= macros._uniq 0)
-                                          (= (compiled scope) (compileForm (macroexpand (parseMacros parsed)) (hoist:`() service:`() replace:(:)) opts))
-                                          (if (and opts.pretty (? beautify))
-                                              (beautify (render compiled) (indent_size: 2))
-                                              (render compiled)))))
+      (= macros._uniq 0)
+      (= (compiled scope) (compileForm (macroexpand (parseMacros parsed)) (hoist:`() service:`() replace:(:)) opts))
+      (if (and opts.pretty (? beautify))
+        ;(render compiled)
+        (beautify (render compiled) (indent_size: 2))
+        (render compiled)))))
 
 (def extend ...objects 
  (let result (:) 
@@ -1230,26 +1251,29 @@
 
 ; Copied (more or less) from CoffeeScript source
 
-(= exports.compileFile (def compileFile filename (do
-                                                  (= raw      (fs.readFileSync filename "utf8")
-                                                     stripped (if (is (raw.charCodeAt 0) 0xFEFF)
-                                                                  (raw.substring 1)
-                                                                  raw))
-                                                  (try (exports.compile stripped) (catch err (throw err))))))
+(= exports.compileFile (def compileFile filename 
+                         (do
+                           (= raw      (fs.readFileSync filename "utf8")
+                             stripped (if (is (raw.charCodeAt 0) 0xFEFF)
+                                        (raw.substring 1)
+                                        raw))
+                           (try (exports.compile stripped) (catch err (throw err))))))
 
-(= exports.run (def run code (options (:)) (do
-                                            (= mainModule         require.main
-                                               mainModule.filename
-                                               (= process.argv[1] (if options.filename
-                                                                      (fs.realpathSync options.filename)
-                                                                      ".")))
-   ; Clear module cache
-                                            (if mainModule.moduleCache (= mainModule.moduleCache (:)))
-   ; Assign paths for node_modules loading
-                                            (= dir (if options.filename
-                                                       (path.dirname (fs.realpathSync options.filename))
-                                                       (fs.realpathSync ".")))
-                                            (= mainModule.paths ((require "module")._nodeModulePaths dir))
-                                            (if (or (not (utils.isJisp mainModule.filename)) require.extensions)
-                                                (= code (exports.compile code)))
-                                            (mainModule._compile code mainModule.filename))))
+(= exports.run 
+  (def run code (options (:))
+    (do
+      (= mainModule         require.main
+        mainModule.filename
+        (= process.argv[1] (if options.filename
+                             (fs.realpathSync options.filename)
+                             ".")))
+      ; Clear module cache
+      (if mainModule.moduleCache (= mainModule.moduleCache (:)))
+      ; Assign paths for node_modules loading
+      (= dir (if options.filename
+               (path.dirname (fs.realpathSync options.filename))
+               (fs.realpathSync ".")))
+      (= mainModule.paths ((require "module")._nodeModulePaths dir))
+      (if (or (not (utils.isJisp mainModule.filename)) require.extensions)
+        (= code (exports.compile code)))
+      (mainModule._compile code mainModule.filename))))

@@ -12,12 +12,6 @@
 
 ;(= exports.list (def list …args `(…args)))
 
-(= exports.log (def log obj
-                    (let result (time: (new Date))
-                      (do (over value key obj
-                                (= result[key] value))
-                        (console.log (JSON.stringify result))))))
-
 ; (range <start> <end>)
 ; (range <end>)  ; start is 0
 (= exports.range (def range start end

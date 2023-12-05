@@ -118,18 +118,19 @@
 
 ;----------------------------------- Other ------------------------------------
 
-(= exports.typify (def typify form
-   (if (not (isAtom form))
-       (throw (Error (+ "expecting atom, got " (pr form))))
-       (elif (isBlankObject form) form)
-       (elif (isa form "undefined") undefined)
-       (elif (is form "null") null)
-       (elif (is form "true" "yes") true)
-       (elif (is form "false" "no") false)
-       (elif (not (isNaN (Number form))) (Number form))
-       (elif (isRegex form) form)
-       (elif (isa form "string") form)
-       (throw (Error (+ "syntax error: unrecognised type of " (pr form)))))))
+(= exports.typify 
+  (def typify form
+    (if (not (isAtom form))
+      (throw (Error (+ "expecting atom, got " (pr form))))
+      (elif (isBlankObject form) form)
+      (elif (isa form "undefined") undefined)
+      (elif (is form "null") null)
+      (elif (is form "true" "yes") true)
+      (elif (is form "false" "no") false)
+      (elif (not (isNaN (Number form))) (Number form))
+      (elif (isRegex form) form)
+      (elif (isa form "string") form)
+      (throw (Error (+ "syntax error: unrecognised type of " (pr form)))))))
 
 (= exports.assertForm (def assertForm form (min 0) (max Infinity) first
    (if (not (isList form))
@@ -211,7 +212,7 @@
                               (pr exp)))
                    ; hash tables and lambdas need extra parens when on their own line
                    (if (or (isHash exp)
-                           (/^function\s*\(/.test res))
+                           (/^(async\s+)?function\s*\(/.test res))
                        (= res (+ "(" res ")")))
                    ; add semicolons to forms that need them
                    (if (not (/:$|\}$|;$/.test (res.slice -1)))
