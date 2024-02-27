@@ -130,21 +130,6 @@
     elements = _res;
     return ((elements.length > 1) ? [].concat(["or"]).concat(elements) : elements[0]);
   };
-  var maceg = function() {
-    var _i;
-    var values = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
-    return [];
-  };
-  var vcsCheckout = function() {
-    var _i;
-    var names = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
-    return [].concat(["do"]).concat(names);
-  };
-  var vcsCommit = function() {
-    var _i;
-    var rest = 1 <= arguments.length ? [].slice.call(arguments, 0, _i = arguments.length - 0) : (_i = 0, []);
-    return [].concat(["do"]).concat(((typeof rest[0] === "string") ? rest.slice(1) : rest));
-  };
   var macUniq = function() {
     return ("g" + require("crypto")
       .randomBytes(20)
@@ -214,9 +199,6 @@
   exports.isa = macIsA;
   exports.isnta = macIsNa;
   exports.any = macAny;
-  exports["e.g."] = maceg;
-  exports["vcs-checkout"] = vcsCheckout;
-  exports["vcs-commit"] = vcsCommit;
   exports["getUniq"] = macUniq;
   return exports["gensym"] = macUniq;
 })['call'](this);

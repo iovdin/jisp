@@ -83,7 +83,6 @@
     repl.on("exit", (function() {
       return repl.outputStream.write("\n");
     }));
-    enableMultiline(repl);
     return repl;
   }));
 })['call'](this);

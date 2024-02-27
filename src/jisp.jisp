@@ -270,133 +270,142 @@
   `(if (and (isList ,form) (in (car ,form) (Object.keys macros)))
     (macCompileGetLast ,form ,form)))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Main Compiler Parts ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; Compiles form, switching between types
 ; Takes: <form to compile> <scope> <options>
 ; Returns: <array of compiled strings> <modified scope>
 (def compileForm form scope (opts (:)) nested 
-  (do
-    ; Switch between form types and compile accordingly
-    (if (and (isList form) (utils.isBlankObject form))
-      `(("") scope)
-      (elif (isAtom form) 
-        (do
-          ; ToDo: check for reserved and forbidden words right here
-          ; If name of toprange jisp func, hoist if not redefined earlier
-          ; If name of operator, hoist appropriate func and replace atom with func name
-          (if (or (and (in form (Object.keys functions))
-                    (notRedefined form))
-                (in form (Object.keys macros)))
-            (macDeclareVar form no)
-            ; ToDo only do this when not first element in list
-            (elif (in form (Object.keys opFuncs))
+  (try
+    (do
+      ; Switch between form types and compile accordingly
+      (if (and (isList form) (utils.isBlankObject form))
+        `(("") scope)
+        (elif (isAtom form) 
+          (do
+            ; ToDo: check for reserved and forbidden words right here
+            ; If name of toprange jisp func, hoist if not redefined earlier
+            ; If name of operator, hoist appropriate func and replace atom with func name
+            (if (or (and (in form (Object.keys functions))
+                      (notRedefined form))
+                  (in form (Object.keys macros)))
+              (macDeclareVar form no)
+              ; ToDo only do this when not first element in list
+              (elif (in form (Object.keys opFuncs))
+                (do
+                  (macDeclareVar form no)
+                  (= form opFuncs[form].name))))
+            ; If name is a service name like #ref, declare it as a service var and replace the name
+            (if (isService form) 
               (do
-                (macDeclareVar form no)
-                (= form opFuncs[form].name))))
-          ; If name is a service name like #ref, declare it as a service var and replace the name
-          (if (isService form) 
-            (do
-              ; Get service part of name
-              (= serv (getServicePart form)
-                re   (RegExp (+ "^" serv)))
-              ; Define corresponding service var, get replacement name
-              (if (not (in serv (Object.keys scope.replace)))
-                (macDeclareService scope.replace[serv] (cdr serv)))
-              ; Replace service part of this name
-              (= form (form.replace re scope.replace[serv]))))
-          `((form) scope)))
-      (elif (isHash form) 
-        (do
+                ; Get service part of name
+                (= serv (getServicePart form)
+                  re   (RegExp (+ "^" serv)))
+                ; Define corresponding service var, get replacement name
+                (if (not (in serv (Object.keys scope.replace)))
+                  (macDeclareService scope.replace[serv] (cdr serv)))
+                ; Replace service part of this name
+                (= form (form.replace re scope.replace[serv]))))
+            `((form) scope)))
+        (elif (isHash form) 
+          (do
+            (= buffer `())
+            ; Unset nested
+            (= nested undefined)
+            (over val key form
+              (macCompileGetLast val form[key]))
+            (buffer.push form)
+            `(buffer scope)))
+        (do  ; Assume list, either special form or function call
+          (if (not (isList form)) (throw (Error (+ "expecting list, got: " (pr form)))))
           (= buffer `())
-          ; Unset nested
-          (= nested undefined)
-          (over val key form
-            (macCompileGetLast val form[key]))
-          (buffer.push form)
-          `(buffer scope)))
-      (do  ; Assume list, either special form or function call
-        (if (not (isList form)) (throw (Error (+ "expecting list, got: " (pr form)))))
-        (= buffer `())
-        (= form (form.slice))  ; duplicate object to avoid changing it for callers
-        (if (in (car form) (Object.keys specials))  ; special forms have their own rules
-          (= (buffer scope) (specials[(car form)] form scope opts nested))
-          ; if a macro definition, define it and revise the result
-          (elif (is (car form) "mac")
-            (macCompileAdd (parseMacros form)))
-          ; if a known macro, expand it and revise the result
-          (elif (in (car form) (Object.keys macros))
-            (do
-              ; fork the `replace` part of the scope to trigger new service declarations
-              ; this ensures no overlaps in service names like #res between outer and inner code
-              (= oldReplace    scope.replace
-                scope.replace (:))
-              (macCompileAdd (expandMacros form))
-              ; revert to the outer `replace` store, dropping the inner store (which should be no longer relevant)
-              (= scope.replace oldReplace)))
-          (do  ; Not a special form? -> function call
-            ; Unset nested (callees assume true)
-            (= nestedLocal nested
-              nested      undefined)
-            ; Compile first element (compiles to itself if atom)
-            (macCompileGetLast (form.shift) first)
-            ; If jisp-top-level func, hoist it
-            (if (and (in first (Object.keys functions))
-                  (notRedefined first))
-              (macDeclareVar first no))
-            ; If operator, check if we're inside compile call to another operator; if not, put this into options
-            (if (in first (Object.keys operators))
-              (do (if (not opts.compilingOperator) (= isOuterOperator yes))
-                (= innerType              (or nestedLocal (is opts.compilingOperator))
-                  opts.compilingOperator yes))
-              ; If not operator, unset operator option for inner calls
-              (do (= opts (JSON.parse (JSON.stringify opts)))
-                (delete opts.compilingOperator)))
-            ; Compile each element and test for spread
-            (for arg i form (do
-                              (if (hasSpread arg)
-                                (do
-                                  (= argsSpread true)
-                                  (macCompileGetLast arg arg)
-                                  (= form[i] `("spread" arg)))
-                                (do
-                                  (macCompileGetLast arg arg)
-                                  (= form[i] arg)))))
-            ; Compile: simple or with spread
-            (if (?! argsSpread)
+          (= form (form.slice))  ; duplicate object to avoid changing it for callers
+          (if (in (car form) (Object.keys specials))  ; special forms have their own rules
+            (= (buffer scope) (specials[(car form)] form scope opts nested))
+            ; if a macro definition, define it and revise the result
+            (elif (is (car form) "mac")
+              (macCompileAdd (parseMacros form)))
+            ; if a known macro, expand it and revise the result
+            (elif (in (car form) (Object.keys macros))
+              (do
+                ; fork the `replace` part of the scope to trigger new service declarations
+                ; this ensures no overlaps in service names like #res between outer and inner code
+                (= oldReplace    scope.replace
+                  scope.replace (:))
+                (macCompileAdd (expandMacros form))
+                ; revert to the outer `replace` store, dropping the inner store (which should be no longer relevant)
+                (= scope.replace oldReplace)))
+            (do  ; Not a special form? -> function call
+              ; Unset nested (callees assume true)
+              (= nestedLocal nested
+                nested      undefined)
+              ; Compile first element (compiles to itself if atom)
+              (macCompileGetLast (form.shift) first)
+              ; If jisp-top-level func, hoist it
+              (if (and (in first (Object.keys functions))
+                    (notRedefined first))
+                (macDeclareVar first no))
+              ; If operator, check if we're inside compile call to another operator; if not, put this into options
               (if (in first (Object.keys operators))
-                (buffer.push (operators[first] form innerType))
-                (buffer.push (+ (pr first) "(" (spr form) ")")))
-              (do  ; Compile as spread
-                ; Compile args into expression that produces single list with elements spread into it, like `(1 2 ...`(3 4)) -> `(1 2 3 4)
-                (= form `("quote" ,form))
-                (macCompileGetLast form form)
-                ; Embed as function and replace `first`
-                ; Only operators that take multiple arguments allow spread; others give a compile error
+                (do (if (not opts.compilingOperator) (= isOuterOperator yes))
+                  (= innerType              (or nestedLocal (is opts.compilingOperator))
+                    opts.compilingOperator yes))
+                ; If not operator, unset operator option for inner calls
+                (do (= opts (JSON.parse (JSON.stringify opts)))
+                  (delete opts.compilingOperator)))
+              ; Compile each element and test for spread
+              (for arg i form (do
+                                (if (hasSpread arg)
+                                  (do
+                                    (= argsSpread true)
+                                    (macCompileGetLast arg arg)
+                                    (= form[i] `("spread" arg)))
+                                  (do
+                                    (macCompileGetLast arg arg)
+                                    (= form[i] arg)))))
+              ; Compile: simple or with spread
+              (if (?! argsSpread)
                 (if (in first (Object.keys operators))
-                  ; ToDo implement embedding as .toString and renaming of references which are not first element in list
-                  (if (and (in first (Object.keys opFuncs))
-                        (spr opFuncs[first]))
-                    (do (macDeclareVar first no)
-                      (= first opFuncs[first].name))
-                    (throw (Error (+ (pr first) " can't spread arguments (yet)")))))
-                ; Split object name and method for applying
-                (= split (utils.splitName first))
-                (if (> split.length 1)
-                  (= method (split.pop)
-                    name   (split.join ""))
-                  (= method ""
-                    name   (car split)))
-                ; Apply, passing self and list of spread args
-                (if (isIdentifier name)
-                  (buffer.push (+ name method ".apply(" name ", " (pr form) ")"))
-                  (do (= (collector scope) (declareService "_ref" scope))
-                    (buffer.push (+ "(" collector " = " name ")" method ".apply(" collector ", " (pr form) ")"))))))))
-        ; Unset operator option for outer calls
-        (if (? isOuterOperator)
-          (delete opts.compilingOperator))
-        ; Return compiled
-        `(buffer scope)))))
+                  (buffer.push (operators[first] form innerType))
+                  (buffer.push (+ (pr first) "(" (spr form) ")")))
+                (do  ; Compile as spread
+                  ; Compile args into expression that produces single list with elements spread into it, like `(1 2 ...`(3 4)) -> `(1 2 3 4)
+                  (= form `("quote" ,form))
+                  (macCompileGetLast form form)
+                  ; Embed as function and replace `first`
+                  ; Only operators that take multiple arguments allow spread; others give a compile error
+                  (if (in first (Object.keys operators))
+                    ; ToDo implement embedding as .toString and renaming of references which are not first element in list
+                    (if (and (in first (Object.keys opFuncs))
+                          (spr opFuncs[first]))
+                      (do (macDeclareVar first no)
+                        (= first opFuncs[first].name))
+                      (throw (Error (+ (pr first) " can't spread arguments (yet)")))))
+                  ; Split object name and method for applying
+                  (= split (utils.splitName first))
+                  (if (> split.length 1)
+                    (= method (split.pop)
+                      name   (split.join ""))
+                    (= method ""
+                      name   (car split)))
+                  ; Apply, passing self and list of spread args
+                  (if (isIdentifier name)
+                    (buffer.push (+ name method ".apply(" name ", " (pr form) ")"))
+                    (do (= (collector scope) (declareService "_ref" scope))
+                      (buffer.push (+ "(" collector " = " name ")" method ".apply(" collector ", " (pr form) ")"))))))))
+          ; Unset operator option for outer calls
+          (if (? isOuterOperator)
+            (delete opts.compilingOperator))
+          ; Return compiled
+          `(buffer scope))))
+    (catch e
+      (do 
+        (if (not e.src)
+          (= e.src form))
+        (if (and (not e.context) (> (JSON.stringify form).length 150))
+          (= e.context form))
+        (throw e)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;; Special Logic For Special Forms ;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1118,15 +1127,16 @@
                             (= form[i] (parseMacros val))))))
          form))
 
-(def makeMacro form selfExpand (do
-                                (= (name ...body) form)
-                                (if (?! name) (throw (Error "a macro requires a name")))
-                                (if (?! body) (throw (Error "a macro requires a body")))
-                                (= body `("do" ("fn" ,...body)))
-                                (= (compiled scope) (compileForm body (hoist:`() service:`() replace:(:)) (macro: yes isTopLevel: yes)))
-                                (= rendered         (render compiled))
-                                (= macros[name]     (jispEval rendered))
-                                (if selfExpand name `())))
+(def makeMacro form selfExpand 
+  (do
+    (= (name ...body) form)
+    (if (?! name) (throw (Error "a macro requires a name")))
+    (if (?! body) (throw (Error "a macro requires a body")))
+    (= body `("do" ("fn" ,...body)))
+    (= (compiled scope) (compileForm body (hoist:`() service:`() replace:(:)) (macro: yes isTopLevel: yes)))
+    (= rendered         (render compiled))
+    (= macros[name]     (jispEval rendered))
+    (if selfExpand name `())))
 
 ; Parses form for known macros to expand, replacing macro calls with macro results
 ; Doesn't reparse after expansion
@@ -1211,27 +1221,48 @@
 
 (= exports.compile 
   (def compile src opts 
-    (do
-      (= defaults (wrap:       yes
-                    topScope:   yes   ; for built-in-func overrides
-                    isTopLevel: yes   ; for functions wrapping `do`
-                    pretty:     yes)  ; enables beautifier
-        opts     (utils.merge defaults opts))
-      (= parsed (if (Array.isArray src) src (parse (lex (tokenise src)))))
-      (parsed.unshift "do")  ; always put code into an implicit `do`
-      (if opts.wrap
-        (= parsed `(("get" ("fn" parsed) "'call'") "this")))
-      (if (not opts.repl)
-        (= functionsRedeclare `()
-          functionsRedefine  `()))  ; reset functions override stores when compiling each new file
+    (try (do
+           (= defaults (wrap:       yes
+                         topScope:   yes   ; for built-in-func overrides
+                         isTopLevel: yes   ; for functions wrapping `do`
+                         pretty:     yes)  ; enables beautifier
+             opts     (utils.merge defaults opts))
+           (= parsed (if (Array.isArray src) src (parse (lex (tokenise src)))))
+           (parsed.unshift "do")  ; always put code into an implicit `do`
+           (if opts.wrap
+             (= parsed `(("get" ("fn" parsed) "'call'") "this")))
+           (if (not opts.repl)
+             (= functionsRedeclare `()
+               functionsRedefine  `()))  ; reset functions override stores when compiling each new file
 
 
-      (= macros._uniq 0)
-      (= (compiled scope) (compileForm (macroexpand (parseMacros parsed)) (hoist:`() service:`() replace:(:)) opts))
-      (if (and opts.pretty (? beautify))
-        ;(render compiled)
-        (beautify (render compiled) (indent_size: 2))
-        (render compiled)))))
+           (= macros._uniq 0)
+           (= (compiled scope) (compileForm (macroexpand (parseMacros parsed)) (hoist:`() service:`() replace:(:)) opts))
+           (if (and opts.pretty (? beautify))
+             ;(render compiled)
+             (beautify (render compiled) (indent_size: 2))
+             (render compiled)))
+      (catch e
+        (do 
+          (def form2str form (tab "")
+            (if (Array.isArray form)
+              (do 
+                (= showErr (is (JSON.stringify form) (JSON.stringify e.src)))
+                (+ (if showErr "\x1b[41m" "")
+                  (if (and (is form[0] "get") (isa form[2] "string") (is form[2][0] "."))
+                    (+ (form2str form[1]) form[2])
+                    (+ (if tab (+ "\n" tab) "") 
+                      "(" ((for item form
+                             (form2str item (+ tab "  "))).join " ") ")"))
+                  (if showErr "\x1b[0m" "")))
+              (elif (isa form "object")
+                (+ "(: "
+                      ((over value key form
+                         (+ "\"" key"\" " (form2str value))).join "  ") ")"))
+              (elif (? form) form) ""))
+
+          (console.error (form2str (or e.context e.src)) e.src)
+          (throw e))))))
 
 (def extend ...objects 
  (let result (:) 
