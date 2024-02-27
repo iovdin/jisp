@@ -1244,24 +1244,45 @@
              (render compiled)))
       (catch e
         (do 
+          (= startErr "\x1b[41m"
+             endErr "\x1b[0m")
           (def form2str form (tab "")
             (if (Array.isArray form)
               (do 
                 (= showErr (is (JSON.stringify form) (JSON.stringify e.src)))
-                (+ (if showErr "\x1b[41m" "")
+                (+ (if showErr startErr "")
                   (if (and (is form[0] "get") (isa form[2] "string") (is form[2][0] "."))
                     (+ (form2str form[1]) form[2])
                     (+ (if tab (+ "\n" tab) "") 
                       "(" ((for item form
                              (form2str item (+ tab "  "))).join " ") ")"))
-                  (if showErr "\x1b[0m" "")))
+                  (if showErr endErr "")))
               (elif (isa form "object")
                 (+ "(: "
                       ((over value key form
                          (+ "\"" key"\" " (form2str value))).join "  ") ")"))
               (elif (? form) form) ""))
 
-          (console.error (form2str (or e.context e.src)) e.src)
+          (= res (form2str (or e.context e.src)))
+          ; show limited number of lines
+          (= (start end) (do res
+                           (.split "\n")
+                           (.reduce 
+                             (fn memo line index
+                               (do (if (isnt -1 (line.indexOf startErr))
+                                     (= memo[0] index))
+                                 (if (isnt -1 (line.indexOf endErr))
+                                   (= memo[1] index))
+                                 memo))
+                             `())))
+          (console.error (do res
+                           (.split "\n")
+                           (.filter (fn line index
+                                      (and (< index (+ end 7))
+                                        (> index (- start 7)))))
+                           (.join "\n")))
+          (delete e.context)
+          (delete e.src)
           (throw e))))))
 
 (def extend ...objects 
