@@ -1,6 +1,6 @@
 {
   "name": "jisp",
-  "version": "0.3.17",
+  "version": "0.3.18",
   "description": "The modern JavaScript: a programmable language",
   "keywords": [
     "javascript",
@@ -36,6 +36,6 @@
     "js-beautify": "latest"
   },
   "devDependencies": {
-    "yargs": "latest"
+    "yargs": "17.7.2"
   }
 }
